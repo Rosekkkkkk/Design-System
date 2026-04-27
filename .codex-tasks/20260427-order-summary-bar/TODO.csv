@@ -1,0 +1,18 @@
+id,task,status,acceptance_criteria,validation_command,completed_at,retry_count,notes
+1,改为方案B汇总行,DONE,明细表和汇总表使用表格底部已选合计行,npm run build,2026-04-27 22:12,0,通过 show-summary 和 summary-method 根据 selectedOrders 生成汇总行
+2,移除方案A外部底部条,DONE,不再渲染外部 OrderStatsCards,npm run build,2026-04-27 22:12,0,删除 OrderStatsCards 和 OrderStatCard 组件
+3,整理统计工具,DONE,统计工具不再保留卡片命名 API,npm run build,2026-04-27 22:12,0,改为 createDetailStatValues/createSummaryStatValues/formatOrderStatNumber
+4,最终验证,DONE,生产构建通过,npm run build,2026-04-27 22:12,0,构建通过；仅有 Vite chunk size warning
+5,修复汇总行和滚动区域,DONE,勾选后汇总行可见且表格高度恢复,npm run build,2026-04-27 22:15,0,补回表格根容器 height:100%；选择事件改为 selection-change；浏览器验证 footer 出现
+6,优化汇总行视觉,DONE,汇总行更低且已选文案不换行,npm run build,2026-04-27 22:20,0,footer 行高 34px；已选文案放入商家名称列并 nowrap；背景改为方案A渐变
+7,增加 footer 边框和粒子背景,DONE,汇总行有 border-top 和动态粒子背景,npm run build,2026-04-27 22:24,0,使用多层 radial-gradient 和 background-position 动画
+8,增强粒子背景,DONE,粒子更明显且底色更深,npm run build,2026-04-27 22:26,0,提高粒子透明度和尺寸；底色改为蓝青渐变
+9,改为不规则粒子轨迹,DONE,粒子不再线性固定漂移,npm run build,2026-04-27 22:29,0,多段 background-position 轨迹；不同列使用不同 duration/direction/delay
+10,汇总信息上移到表头,DONE,合计值显示在对应字段表头上方,npm run build,2026-04-27 22:36,0,移除 el-table footer 汇总；通过 header slot 展示上方合计值和下方字段名
+11,汇总行挪到表格上方,DONE,合计行作为整行显示在表格顶部并带出现过渡,npm run build,2026-04-27 22:43,0,撤销表头内合计；新增 selection-summary-row；高度/透明度/位移过渡
+12,合计值按列对齐,DONE,数字合计落在对应字段列且不带字段前缀,npm run build,2026-04-27 22:48,0,汇总行改为与表格列宽一致的 grid；空列占位；数值列右对齐
+13,移除粒子并居中合计数字,DONE,汇总行无粒子动画且数字居中,npm run build,2026-04-27 22:53,0,删除 radial-gradient/keyframes/animation；selection-summary-value 改为 center
+14,降低汇总行视觉突兀感,DONE,汇总行更像表格辅助层,npm run build,2026-04-27 22:57,0,高度 34px；浅蓝灰背景；数字中等强调；轻微位移动画
+15,恢复方案A底部汇总条,DONE,不再按列对齐，按方案A图还原底部汇总条,npm run build,2026-04-27 23:03,0,表格上方汇总行改为底部卡片式汇总条；出现时通过 flex 扣除表格高度
+16,按参考图改为紧凑青绿色横条,DONE,底部汇总条接近截图且无右侧 X,npm run build,2026-04-27 23:08,0,青绿色渐变背景；白色勾选圆点；横向指标；保留清空选择按钮；无关闭 X
+17,接入清空选择,DONE,点击清空选择清除当前表格所有选中项,npm run build,2026-04-27 23:12,0,子表格 clearSelection；父页面清空跨分页选中状态并刷新 table key

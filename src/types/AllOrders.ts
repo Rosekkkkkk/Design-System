@@ -13,6 +13,7 @@ export interface AllOrder {
   customer: string
   remark: string
   orderedAt: string
+  completedAt?: string
 }
 
 export interface AllOrderSummary {

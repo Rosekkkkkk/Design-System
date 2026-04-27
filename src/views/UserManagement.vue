@@ -24,18 +24,20 @@
 
       <div class="user-table-panel">
         <el-table :data="pagedUsers" border height="100%">
-          <el-table-column label="用户名" min-width="352" prop="realName" />
-          <el-table-column label="登录账号" min-width="392" prop="username" />
-          <el-table-column label="当前角色" min-width="150">
+          <el-table-column label="用户名" prop="realName" />
+          <el-table-column label="登录账号" prop="username" />
+          <el-table-column label="当前角色">
             <template #default="{ row }">
               {{ getRoleLabel(row.role) }}
             </template>
           </el-table-column>
-          <el-table-column label="创建时间" min-width="410" prop="createdAt" />
-          <el-table-column fixed="right" label="操作" min-width="158">
+          <el-table-column label="创建时间" prop="createdAt" />
+          <el-table-column fixed="right" label="操作" width="136">
             <template #default="{ row }">
-              <el-button class="edit-button" plain size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
-              <el-button class="delete-button" plain size="small" type="danger" @click="handleDeleteUser(row)">删除</el-button>
+              <div class="user-action-buttons">
+                <el-button class="edit-button" plain size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
+                <el-button class="delete-button" plain size="small" type="danger" @click="handleDeleteUser(row)">删除</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -419,6 +421,18 @@ const handleDeleteUser = async (row: UserRecord) => {
 .edit-button,
 .delete-button {
   font-weight: 700;
+}
+
+.user-action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+
+  .el-button + .el-button {
+    margin-left: 0;
+  }
 }
 
 .user-pagination {

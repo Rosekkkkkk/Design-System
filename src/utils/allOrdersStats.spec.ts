@@ -1,5 +1,5 @@
 import type { AllOrder, AllOrderSummary } from '../types/AllOrders'
-import { createDetailStatCards, createSummaryStatCards } from './allOrdersStats'
+import { createDetailStatValues, createSummaryStatValues, formatOrderStatNumber } from './allOrdersStats'
 
 const detailOrders: AllOrder[] = [
   {
@@ -33,24 +33,10 @@ const summaryOrders: AllOrderSummary[] = [
   },
 ]
 
-const detailStats = createDetailStatCards(detailOrders)
-const summaryStats = createSummaryStatCards(summaryOrders)
+const detailStats = createDetailStatValues(detailOrders)
+const summaryStats = createSummaryStatValues(summaryOrders)
+const formattedValue = formatOrderStatNumber(summaryStats.receiveTotal)
 
-detailStats satisfies Array<{ label: string; value: string; backgroundColor?: string; textColor?: string }>
-summaryStats satisfies Array<{ label: string; value: string; backgroundColor?: string; textColor?: string }>
-
-const detailLabels: ['照片总张数', '接单总价', '派单总价'] = detailStats.map((item) => item.label) as [
-  '照片总张数',
-  '接单总价',
-  '派单总价',
-]
-const summaryLabels: ['订单总数', '照片总张数', '接单总价', '派单总价', '利润'] = summaryStats.map((item) => item.label) as [
-  '订单总数',
-  '照片总张数',
-  '接单总价',
-  '派单总价',
-  '利润',
-]
-
-void detailLabels
-void summaryLabels
+detailStats satisfies { photoCount: number; receiveTotal: number; dispatchTotal: number }
+summaryStats satisfies { orderCount: number; photoCount: number; receiveTotal: number; dispatchTotal: number; profit: number }
+formattedValue satisfies string

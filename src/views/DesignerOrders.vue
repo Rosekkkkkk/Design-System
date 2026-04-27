@@ -46,7 +46,11 @@
 
     <div class="table-panel">
       <el-table :data="orders" border height="100%" stripe>
-        <el-table-column label="商家名称" min-width="210" prop="merchant" />
+        <el-table-column min-width="210" prop="merchant">
+          <template #header>
+            <button class="table-header-link" type="button" @click="merchantDialogVisible = true">商家名称</button>
+          </template>
+        </el-table-column>
         <el-table-column label="照片类型" min-width="88" prop="photoType" />
         <el-table-column label="状态" min-width="88">
           <template #default="{ row }">
@@ -76,11 +80,31 @@
         layout="total, prev, pager, next, jumper"
       />
     </footer>
+
+    <el-dialog v-model="merchantDialogVisible" title="商家明细" class="orders-group-dialog" width="960px">
+      <el-collapse v-model="activeMerchantGroups">
+        <el-collapse-item v-for="group in merchantOrderGroups" :key="group.name" :name="group.name">
+          <template #title>
+            <span class="collapse-title">{{ group.name }}</span>
+            <span class="collapse-count">{{ group.orders.length }} 单</span>
+          </template>
+
+          <el-table :data="group.orders" border stripe>
+            <el-table-column label="商家名称" min-width="120" prop="merchant" />
+            <el-table-column label="客户信息" min-width="110" prop="customer" />
+            <el-table-column label="订单号" min-width="150" prop="orderNo" />
+            <el-table-column label="照片张数" min-width="90" prop="photoCount" />
+            <el-table-column label="下单时间" min-width="180" prop="orderedAt" />
+            <el-table-column label="备注" min-width="180" prop="remark" />
+          </el-table>
+        </el-collapse-item>
+      </el-collapse>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import type {
   DesignerOrder,
   DesignerOrdersFilters,
@@ -100,6 +124,9 @@ const pagination = reactive<DesignerOrdersPagination>({
   pageNo: 1,
   pageSize: 17,
 })
+
+const merchantDialogVisible = ref(false)
+const activeMerchantGroups = ref<string[]>([])
 
 const merchantOptions = ['云帆摄影', '木石电商', '星野婚礼', '青橙影像', '森白视觉', '北岸写真']
 const photoTypeOptions = ['精修', '抠图', '调色', '排版', '证件照', '产品修图']
@@ -142,6 +169,23 @@ const orders: DesignerOrder[] = source.map(
     statusClass: status === '未完工' || status === '已完工' ? 'blue' : '',
   }),
 )
+
+interface OrderGroup {
+  name: string
+  orders: DesignerOrder[]
+}
+
+const merchantOrderGroups = computed<OrderGroup[]>(() => {
+  const groupMap = new Map<string, DesignerOrder[]>()
+
+  orders.forEach((order) => {
+    const groupName = order.merchant || '未填写'
+    groupMap.set(groupName, [...(groupMap.get(groupName) ?? []), order])
+  })
+
+  return Array.from(groupMap, ([name, groupedOrders]) => ({ name, orders: groupedOrders }))
+})
+
 </script>
 
 <style scoped lang="scss">
@@ -258,6 +302,95 @@ const orders: DesignerOrder[] = source.map(
   &.blue {
     color: #0057ff;
   }
+}
+
+.table-header-link {
+  padding: 0;
+  color: #0057ff;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+
+  &:hover,
+  &:focus-visible {
+    color: #003fbd;
+    text-decoration: underline;
+  }
+}
+
+.collapse-title {
+  color: #001b44;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.collapse-count {
+  margin-left: 10px;
+  color: #6b7f9d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+:deep(.orders-group-dialog) {
+  --el-dialog-padding-primary: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+:deep(.orders-group-dialog .el-dialog__header) {
+  padding: 20px 28px 14px;
+  margin-right: 42px;
+  border-bottom: 1px solid #e8eef7;
+}
+
+:deep(.orders-group-dialog .el-dialog__title) {
+  color: #001b44;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+:deep(.orders-group-dialog .el-dialog__body) {
+  max-height: 72vh;
+  padding: 16px 22px 24px;
+  overflow: auto;
+  background: #f8fbff;
+}
+
+:deep(.orders-group-dialog .el-collapse) {
+  border-top: 0;
+}
+
+:deep(.orders-group-dialog .el-collapse-item) {
+  margin-bottom: 12px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dfe7f2;
+  border-radius: 12px;
+}
+
+:deep(.orders-group-dialog .el-collapse-item__header) {
+  height: 46px;
+  padding: 0 16px;
+  border-bottom-color: #edf2f8;
+}
+
+:deep(.orders-group-dialog .el-collapse-item__wrap) {
+  border-bottom: 0;
+}
+
+:deep(.orders-group-dialog .el-collapse-item__content) {
+  padding: 14px 16px 16px;
+}
+
+:deep(.orders-group-dialog .el-table) {
+  --el-table-border-color: #dfe7f2;
+  --el-table-header-bg-color: #f3f6fb;
+  --el-table-header-text-color: #001b44;
+  --el-table-text-color: #001b44;
+  font-size: 13px;
 }
 
 .pagination {

@@ -193,6 +193,13 @@ const handleSaveAccount = async () => {
 
 <style scoped lang="scss">
 .manager-shell {
+  --copy-blue: #2778f6;
+  --copy-blue-deep: #145ee6;
+  --copy-cyan: #6ae5f4;
+  --copy-ink: #0d1d38;
+  --copy-muted: #7c8ba3;
+  --copy-line: rgba(138, 180, 235, 0.32);
+
   position: relative;
   isolation: isolate;
   display: grid;
@@ -200,27 +207,43 @@ const handleSaveAccount = async () => {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
-  background: #eaf2fe;
+  color: var(--copy-ink);
+  background:
+    radial-gradient(circle at 8% 10%, rgba(255, 255, 255, 0.92), transparent 28%),
+    radial-gradient(circle at 82% 24%, rgba(156, 215, 255, 0.58), transparent 34%),
+    radial-gradient(circle at 76% 78%, rgba(105, 224, 240, 0.34), transparent 34%),
+    linear-gradient(135deg, #fbfdff 0%, #edf6ff 38%, #dceeff 100%);
 
   &::before,
   &::after {
-    display: none;
+    position: fixed;
+    z-index: 0;
+    content: '';
+    pointer-events: none;
+    border: 2px solid transparent;
+    border-top-color: rgba(126, 238, 243, 0.42);
+    border-right-color: rgba(255, 255, 255, 0.72);
+    border-radius: 50%;
+    filter: drop-shadow(0 0 18px rgba(98, 216, 245, 0.2));
+    opacity: 0.58;
+    animation: layoutRingSweep 14s ease-in-out infinite alternate;
   }
 
   &::before {
-    right: -105px;
-    bottom: 205px;
-    width: 420px;
-    height: 220px;
-    transform: rotate(12deg);
+    top: -260px;
+    right: 12%;
+    width: 520px;
+    height: 520px;
   }
 
   &::after {
-    left: -180px;
-    bottom: 160px;
-    width: 560px;
-    height: 260px;
-    transform: rotate(10deg);
+    right: -170px;
+    bottom: -210px;
+    width: 620px;
+    height: 620px;
+    border-top-color: rgba(255, 255, 255, 0.64);
+    border-left-color: rgba(103, 198, 255, 0.26);
+    animation-delay: -6s;
   }
 }
 
@@ -234,23 +257,42 @@ const handleSaveAccount = async () => {
   padding: 0 28px;
   overflow: hidden;
   background:
-    linear-gradient(rgba(232, 244, 255, 0.72), rgba(195, 225, 255, 0.5)),
-    url('../assets/tech-network-bg.svg') center 43% / cover no-repeat,
-    #dceeff;
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.94), transparent 34%),
+    radial-gradient(circle at 86% 24%, rgba(106, 229, 244, 0.28), transparent 30%),
+    linear-gradient(105deg, rgba(255, 255, 255, 0.72), rgba(219, 243, 255, 0.5));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.88);
   box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, 0.72),
-    0 12px 28px rgba(61, 116, 180, 0.12);
-  animation: techBgDrift 14s ease-in-out infinite alternate;
+    inset 0 -1px 0 rgba(255, 255, 255, 0.64),
+    0 16px 36px rgba(73, 122, 186, 0.14);
+  backdrop-filter: blur(18px);
 
+  &::before,
   &::after {
     position: absolute;
-    inset: 0;
     content: '';
     pointer-events: none;
-    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.5) 42%, transparent 66%);
-    opacity: 0.34;
-    transform: translateX(-110%);
-    animation: techLightSweep 5.6s ease-in-out infinite;
+  }
+
+  &::before {
+    top: -150px;
+    right: 7%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(83, 218, 243, 0.48), transparent 68%);
+    border-radius: 999px;
+    filter: blur(10px);
+    animation: layoutOrbFloat 8s ease-in-out infinite alternate;
+  }
+
+  &::after {
+    inset: auto -8% -34px -8%;
+    height: 76px;
+    background:
+      radial-gradient(circle, rgba(47, 125, 246, 0.18) 0 1px, transparent 1.8px) 0 0 / 18px 18px,
+      linear-gradient(95deg, rgba(117, 220, 255, 0.18), rgba(255, 255, 255, 0.58));
+    clip-path: polygon(0 46%, 13% 57%, 28% 48%, 43% 64%, 61% 47%, 78% 61%, 100% 42%, 100% 100%, 0 100%);
+    opacity: 0.62;
+    animation: layoutWaveDriftBack 11s ease-in-out infinite alternate;
   }
 
   > * {
@@ -265,7 +307,7 @@ const handleSaveAccount = async () => {
   align-items: center;
   height: 32px;
   padding: 0;
-  color: #0d1d38;
+  color: var(--copy-ink);
   cursor: pointer;
 }
 
@@ -276,7 +318,7 @@ const handleSaveAccount = async () => {
   justify-content: center;
   width: 26px;
   height: 32px;
-  color: #1f5fe8;
+  color: var(--copy-blue);
   font-size: 26px;
   line-height: 1;
 
@@ -295,7 +337,7 @@ const handleSaveAccount = async () => {
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: #0d1d38;
+  color: #17243d;
 }
 
 .user-area {
@@ -305,7 +347,7 @@ const handleSaveAccount = async () => {
 }
 
 .user-name {
-  color: #0d1d38;
+  color: #17243d;
   font-size: 14px;
   font-weight: 500;
 }
@@ -316,13 +358,18 @@ const handleSaveAccount = async () => {
   height: 36px;
   padding: 0;
   place-items: center;
-  color: #1153d8;
+  color: var(--copy-blue);
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  background: #dbe9ff;
+  background:
+    radial-gradient(circle at 70% 18%, rgba(255, 255, 255, 0.9), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(214, 241, 255, 0.58));
   border: 0;
   border-radius: 50%;
+  box-shadow:
+    inset 0 0 16px rgba(255, 255, 255, 0.72),
+    0 10px 24px rgba(39, 120, 246, 0.16);
 
   :deep(svg) {
     display: block;
@@ -415,47 +462,52 @@ const handleSaveAccount = async () => {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(rgba(232, 244, 255, 0.72), rgba(196, 226, 255, 0.52)),
-    url('../assets/tech-network-bg.svg') center bottom / cover no-repeat,
-    #dceeff;
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.86), transparent 30%),
+    radial-gradient(circle at 82% 58%, rgba(106, 229, 244, 0.22), transparent 34%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.58), rgba(219, 243, 255, 0.36));
+  border-right: 1px solid rgba(255, 255, 255, 0.82);
   box-shadow:
-    inset -1px 0 0 rgba(255, 255, 255, 0.62),
-    10px 0 26px rgba(61, 116, 180, 0.08);
-  animation: sidebarTechBgDrift 10s ease-in-out infinite alternate;
+    inset -1px 0 0 rgba(255, 255, 255, 0.54),
+    16px 0 38px rgba(73, 122, 186, 0.1);
+  backdrop-filter: blur(18px);
 
-  &::before {
+  &::before,
+  &::after {
     position: absolute;
-    inset: -18% -24%;
     content: '';
     pointer-events: none;
+  }
+
+  &::before {
+    inset: auto -42% -10% -42%;
+    height: 38%;
     background:
-      linear-gradient(rgba(232, 244, 255, 0.2), rgba(196, 226, 255, 0.12)),
-      url('../assets/tech-network-bg.svg') center bottom / cover no-repeat;
-    opacity: 0.74;
-    transform: translate3d(0, 18px, 0) scale(1.06);
-    animation: sidebarTechImageFloat 7.5s ease-in-out infinite alternate;
-    will-change: transform;
+      radial-gradient(circle, rgba(255, 255, 255, 0.86) 0 1.4px, transparent 2px) 0 0 / 22px 22px,
+      linear-gradient(100deg, rgba(255, 255, 255, 0.62), rgba(115, 198, 255, 0.2), rgba(255, 255, 255, 0.48));
+    clip-path: polygon(0 34%, 10% 43%, 20% 38%, 32% 52%, 45% 42%, 58% 56%, 72% 45%, 86% 58%, 100% 49%, 100% 100%, 0 100%);
+    opacity: 0.72;
+    animation: layoutWaveDrift 9s ease-in-out infinite alternate;
   }
 
   &::after {
-    position: absolute;
     inset: 0;
-    content: '';
-    pointer-events: none;
-    background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.44) 42%, transparent 66%);
-    opacity: 0.36;
-    transform: translateY(-110%);
-    animation: sidebarTechLightSweep 5.2s ease-in-out infinite;
-    z-index: 1;
+    background:
+      radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.92) 0 2px, transparent 3px),
+      radial-gradient(circle at 72% 38%, rgba(255, 255, 255, 0.82) 0 1.8px, transparent 3px),
+      radial-gradient(circle at 42% 66%, rgba(255, 255, 255, 0.86) 0 2px, transparent 3px),
+      linear-gradient(120deg, transparent 0 34%, rgba(113, 171, 235, 0.2) 34.2% 34.6%, transparent 34.8%),
+      linear-gradient(54deg, transparent 0 48%, rgba(113, 171, 235, 0.22) 48.2% 48.6%, transparent 48.8%);
+    opacity: 0.5;
+    animation: layoutParticleDrift 5.6s ease-in-out infinite alternate;
   }
 }
 
 .sidebar-menu {
   position: relative;
-  z-index: 2;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  padding-top: 0;
+  padding-top: 8px;
 
   button {
     display: flex;
@@ -464,7 +516,7 @@ const handleSaveAccount = async () => {
     width: 220px;
     height: 56px;
     padding: 0 0 0 69px;
-    color: #0d1d38;
+    color: #17243d;
     font: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -472,13 +524,26 @@ const handleSaveAccount = async () => {
     text-align: left;
     cursor: pointer;
     background: transparent;
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+
+    &:hover {
+      color: var(--copy-blue-deep);
+      background: rgba(255, 255, 255, 0.32);
+      transform: translateX(2px);
+    }
 
     &.active {
       color: #fff;
-      background: linear-gradient(105deg, #1f72f2 0%, #2688ff 58%, #33c8f2 100%);
+      background:
+        radial-gradient(circle at 92% 18%, rgba(255, 255, 255, 0.9), transparent 11%),
+        linear-gradient(105deg, #1f72f2 0%, #2688ff 58%, #33c8f2 100%);
       box-shadow:
-        0 10px 22px rgba(39, 120, 246, 0.22),
-        inset 0 1px 0 rgba(255, 255, 255, 0.34);
+        0 14px 26px rgba(39, 120, 246, 0.24),
+        0 0 0 1px rgba(255, 255, 255, 0.26) inset;
     }
   }
 }
@@ -492,70 +557,116 @@ const handleSaveAccount = async () => {
 }
 
 .manager-main {
+  position: relative;
   min-width: 0;
   min-height: 0;
   padding: 18px;
   overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.74), transparent 28%),
+    radial-gradient(circle at 86% 16%, rgba(106, 229, 244, 0.18), transparent 30%),
+    radial-gradient(circle at 72% 82%, rgba(39, 120, 246, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.32), rgba(220, 238, 255, 0.28));
+
+  &::before,
+  &::after {
+    position: absolute;
+    content: '';
+    pointer-events: none;
+  }
+
+  &::before {
+    top: 34px;
+    right: 42px;
+    width: 272px;
+    height: 176px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.68) 0 7px, transparent 7px 17px) 32px 32px / 132px 17px no-repeat,
+      linear-gradient(180deg, rgba(111, 235, 233, 0.46), rgba(255, 255, 255, 0.46)) 174px 88px / 18px 54px no-repeat,
+      linear-gradient(180deg, rgba(111, 235, 233, 0.52), rgba(255, 255, 255, 0.5)) 204px 66px / 18px 76px no-repeat,
+      linear-gradient(180deg, rgba(111, 235, 233, 0.4), rgba(255, 255, 255, 0.44)) 234px 98px / 18px 44px no-repeat,
+      linear-gradient(145deg, rgba(255, 255, 255, 0.42), rgba(214, 241, 255, 0.2));
+    border: 1px solid rgba(255, 255, 255, 0.66);
+    border-radius: 18px;
+    box-shadow:
+      inset 0 0 24px rgba(255, 255, 255, 0.4),
+      0 22px 46px rgba(105, 156, 216, 0.12);
+    opacity: 0.42;
+    backdrop-filter: blur(12px);
+    animation: layoutPanelFloat 7s ease-in-out infinite alternate;
+  }
+
+  &::after {
+    inset: 0;
+    background:
+      radial-gradient(circle at 9% 18%, rgba(255, 255, 255, 0.88) 0 1.8px, transparent 3px),
+      radial-gradient(circle at 21% 42%, rgba(255, 255, 255, 0.76) 0 1.4px, transparent 2.6px),
+      radial-gradient(circle at 44% 22%, rgba(255, 255, 255, 0.82) 0 1.6px, transparent 2.8px),
+      radial-gradient(circle at 72% 44%, rgba(255, 255, 255, 0.78) 0 1.6px, transparent 2.8px),
+      radial-gradient(circle at 88% 72%, rgba(255, 255, 255, 0.82) 0 1.8px, transparent 3px),
+      linear-gradient(36deg, transparent 0 31%, rgba(113, 171, 235, 0.12) 31.1% 31.3%, transparent 31.5%),
+      linear-gradient(118deg, transparent 0 58%, rgba(113, 171, 235, 0.14) 58.1% 58.3%, transparent 58.5%);
+    opacity: 0.52;
+    animation: layoutParticleDrift 6.4s ease-in-out infinite alternate;
+  }
+
+  > :deep(*) {
+    position: relative;
+    z-index: 1;
+  }
 }
 
-@keyframes techBgDrift {
+@keyframes layoutWaveDrift {
   from {
-    background-position:
-      0 0,
-      center 43%,
-      0 0;
+    transform: translate3d(-18px, 0, 0) scaleY(1);
   }
   to {
-    background-position:
-      0 0,
-      center 58%,
-      0 0;
+    transform: translate3d(28px, -18px, 0) scaleY(1.08);
   }
 }
 
-@keyframes techLightSweep {
-  0%,
-  42% {
-    transform: translateX(-115%);
-  }
-  72%,
-  100% {
-    transform: translateX(115%);
-  }
-}
-
-@keyframes sidebarTechBgDrift {
+@keyframes layoutWaveDriftBack {
   from {
-    background-position:
-      0 0,
-      center bottom,
-      0 0;
+    transform: translate3d(22px, 0, 0) scaleY(1);
   }
   to {
-    background-position:
-      0 0,
-      center 38%,
-      0 0;
+    transform: translate3d(-28px, -14px, 0) scaleY(1.06);
   }
 }
 
-@keyframes sidebarTechLightSweep {
-  0%,
-  38% {
-    transform: translateY(-115%);
-  }
-  72%,
-  100% {
-    transform: translateY(115%);
-  }
-}
-
-@keyframes sidebarTechImageFloat {
+@keyframes layoutOrbFloat {
   from {
-    transform: translate3d(0, 22px, 0) scale(1.06);
+    transform: translate3d(-10px, 12px, 0) scale(0.96);
   }
   to {
-    transform: translate3d(0, -46px, 0) scale(1.16);
+    transform: translate3d(16px, -18px, 0) scale(1.08);
+  }
+}
+
+@keyframes layoutRingSweep {
+  from {
+    transform: rotate(8deg) translate3d(-12px, 0, 0);
+  }
+  to {
+    transform: rotate(24deg) translate3d(20px, 16px, 0);
+  }
+}
+
+@keyframes layoutParticleDrift {
+  from {
+    transform: translate3d(-12px, 10px, 0);
+  }
+  to {
+    transform: translate3d(18px, -18px, 0);
+  }
+}
+
+@keyframes layoutPanelFloat {
+  from {
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    transform: translate3d(0, -14px, 0);
   }
 }
 

@@ -200,11 +200,17 @@ const handleSaveAccount = async () => {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
-  background: #eaf2fe;
+  background: radial-gradient(circle at 100% 66%, rgba(31, 105, 241, 0.34), transparent 18%), linear-gradient(180deg, #0b2a5a 0 72px, #061a3a 72px 100%);
 
   &::before,
   &::after {
-    display: none;
+    position: fixed;
+    z-index: 0;
+    content: '';
+    pointer-events: none;
+    border: 1px solid rgba(65, 135, 255, 0.24);
+    border-color: rgba(65, 135, 255, 0.24) transparent transparent transparent;
+    border-radius: 50%;
   }
 
   &::before {
@@ -232,31 +238,7 @@ const handleSaveAccount = async () => {
   justify-content: space-between;
   height: 72px;
   padding: 0 28px;
-  overflow: hidden;
-  background:
-    linear-gradient(rgba(232, 244, 255, 0.72), rgba(195, 225, 255, 0.5)),
-    url('../assets/tech-network-bg.svg') center 43% / cover no-repeat,
-    #dceeff;
-  box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, 0.72),
-    0 12px 28px rgba(61, 116, 180, 0.12);
-  animation: techBgDrift 14s ease-in-out infinite alternate;
-
-  &::after {
-    position: absolute;
-    inset: 0;
-    content: '';
-    pointer-events: none;
-    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.5) 42%, transparent 66%);
-    opacity: 0.34;
-    transform: translateX(-110%);
-    animation: techLightSweep 5.6s ease-in-out infinite;
-  }
-
-  > * {
-    position: relative;
-    z-index: 1;
-  }
+  background: #0b2a5a;
 }
 
 .brand {
@@ -265,7 +247,7 @@ const handleSaveAccount = async () => {
   align-items: center;
   height: 32px;
   padding: 0;
-  color: #0d1d38;
+  color: #fff;
   cursor: pointer;
 }
 
@@ -276,7 +258,7 @@ const handleSaveAccount = async () => {
   justify-content: center;
   width: 26px;
   height: 32px;
-  color: #1f5fe8;
+  color: #fff;
   font-size: 26px;
   line-height: 1;
 
@@ -295,7 +277,6 @@ const handleSaveAccount = async () => {
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: #0d1d38;
 }
 
 .user-area {
@@ -305,7 +286,7 @@ const handleSaveAccount = async () => {
 }
 
 .user-name {
-  color: #0d1d38;
+  color: #fff;
   font-size: 14px;
   font-weight: 500;
 }
@@ -412,50 +393,13 @@ const handleSaveAccount = async () => {
 }
 
 .sidebar {
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(rgba(232, 244, 255, 0.72), rgba(196, 226, 255, 0.52)),
-    url('../assets/tech-network-bg.svg') center bottom / cover no-repeat,
-    #dceeff;
-  box-shadow:
-    inset -1px 0 0 rgba(255, 255, 255, 0.62),
-    10px 0 26px rgba(61, 116, 180, 0.08);
-  animation: sidebarTechBgDrift 10s ease-in-out infinite alternate;
-
-  &::before {
-    position: absolute;
-    inset: -18% -24%;
-    content: '';
-    pointer-events: none;
-    background:
-      linear-gradient(rgba(232, 244, 255, 0.2), rgba(196, 226, 255, 0.12)),
-      url('../assets/tech-network-bg.svg') center bottom / cover no-repeat;
-    opacity: 0.74;
-    transform: translate3d(0, 18px, 0) scale(1.06);
-    animation: sidebarTechImageFloat 7.5s ease-in-out infinite alternate;
-    will-change: transform;
-  }
-
-  &::after {
-    position: absolute;
-    inset: 0;
-    content: '';
-    pointer-events: none;
-    background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.44) 42%, transparent 66%);
-    opacity: 0.36;
-    transform: translateY(-110%);
-    animation: sidebarTechLightSweep 5.2s ease-in-out infinite;
-    z-index: 1;
-  }
+  background: rgba(3, 18, 42, 0.82);
 }
 
 .sidebar-menu {
-  position: relative;
-  z-index: 2;
   display: flex;
   flex-direction: column;
-  padding-top: 0;
+  padding-top: 8px;
 
   button {
     display: flex;
@@ -464,7 +408,7 @@ const handleSaveAccount = async () => {
     width: 220px;
     height: 56px;
     padding: 0 0 0 69px;
-    color: #0d1d38;
+    color: #fff;
     font: inherit;
     font-size: 14px;
     font-weight: 600;
@@ -474,18 +418,14 @@ const handleSaveAccount = async () => {
     background: transparent;
 
     &.active {
-      color: #fff;
-      background: linear-gradient(105deg, #1f72f2 0%, #2688ff 58%, #33c8f2 100%);
-      box-shadow:
-        0 10px 22px rgba(39, 120, 246, 0.22),
-        inset 0 1px 0 rgba(255, 255, 255, 0.34);
+      background: #2b66e8;
     }
   }
 }
 
 .menu-icon {
   width: 12px;
-  color: currentColor;
+  color: #fff;
   font-size: 14px;
   line-height: 1;
   text-align: center;
@@ -496,67 +436,6 @@ const handleSaveAccount = async () => {
   min-height: 0;
   padding: 18px;
   overflow: hidden;
-}
-
-@keyframes techBgDrift {
-  from {
-    background-position:
-      0 0,
-      center 43%,
-      0 0;
-  }
-  to {
-    background-position:
-      0 0,
-      center 58%,
-      0 0;
-  }
-}
-
-@keyframes techLightSweep {
-  0%,
-  42% {
-    transform: translateX(-115%);
-  }
-  72%,
-  100% {
-    transform: translateX(115%);
-  }
-}
-
-@keyframes sidebarTechBgDrift {
-  from {
-    background-position:
-      0 0,
-      center bottom,
-      0 0;
-  }
-  to {
-    background-position:
-      0 0,
-      center 38%,
-      0 0;
-  }
-}
-
-@keyframes sidebarTechLightSweep {
-  0%,
-  38% {
-    transform: translateY(-115%);
-  }
-  72%,
-  100% {
-    transform: translateY(115%);
-  }
-}
-
-@keyframes sidebarTechImageFloat {
-  from {
-    transform: translate3d(0, 22px, 0) scale(1.06);
-  }
-  to {
-    transform: translate3d(0, -46px, 0) scale(1.16);
-  }
 }
 
 @media (max-width: 980px) {

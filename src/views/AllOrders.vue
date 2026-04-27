@@ -65,8 +65,10 @@
       <AllOrdersDetailTable
         v-if="tableMode === 'detail'"
         :key="`detail-${tableRenderKey}`"
+        :group-orders="orders"
         :orders="pagedOrders"
         :selected-orders="selectedDetailRows"
+        @clear-selection="clearDetailSelection"
         @edit-order="openEditOrderDialog"
         @selection-change="handleDetailSelectionChange"
       />
@@ -75,6 +77,7 @@
         :key="`summary-${tableRenderKey}`"
         :orders="pagedSummaryOrders"
         :selected-orders="selectedSummaryRows"
+        @clear-selection="clearSummarySelection"
         @selection-change="handleSummarySelectionChange"
       />
     </div>
@@ -172,6 +175,8 @@ const source: AllOrderSourceRow[] = [
   ['云帆摄影', '证件照', '问题件', '何设计', 'DD20260425017', 29, 12, 8, '刘女士', '保持肤色自然', '2026-04-10 09:26:00']
 ]
 
+const getMockCompletedAt = (status: string, orderedAt: string) => (status === '已完工' ? orderedAt.replace('09:', '18:') : '')
+
 const orders: AllOrder[] = source.map(([merchant, photoType, status, designer, orderNo, photoCount, receivePrice, dispatchPrice, customer, remark, orderedAt], index) => ({
   index: index + 1,
   merchant,
@@ -186,7 +191,8 @@ const orders: AllOrder[] = source.map(([merchant, photoType, status, designer, o
   dispatchTotal: photoCount * dispatchPrice,
   customer,
   remark,
-  orderedAt
+  orderedAt,
+  completedAt: getMockCompletedAt(status, orderedAt)
 }))
 
 const summaryMerchants = ['云帆摄影', '木石电商', '星野婚礼', '青橙影像', '森白视觉', '北岸写真', '拾光电商', '鹿鸣影像']
@@ -217,6 +223,16 @@ const handleDetailSelectionChange = (selection: AllOrder[]) => {
 
 const handleSummarySelectionChange = (selection: AllOrderSummary[]) => {
   selectedSummaryRows.value = mergePagedSelection(selectedSummaryRows.value, selection, pagedSummaryOrders.value, getAllOrderSummarySelectionKey)
+}
+
+const clearDetailSelection = () => {
+  selectedDetailRows.value = []
+  tableRenderKey.value += 1
+}
+
+const clearSummarySelection = () => {
+  selectedSummaryRows.value = []
+  tableRenderKey.value += 1
 }
 
 const resetTableSwitchState = () => {
@@ -464,7 +480,6 @@ const handleCreateOrderConfirm = (_form: CreateOrderForm) => {
 
 .table-panel {
   :deep(.status-text),
-  :deep(.remark-text),
   :deep(.summary-detail-button) {
     color: #0057ff;
   }

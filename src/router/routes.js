@@ -45,7 +45,7 @@ export const routes = [
         path: 'master-data',
         name: 'MasterData',
         meta: {
-          title: '基础资料',
+          title: '商户管理',
           roles: ['DISPATCHER', 'ADMIN']
         },
         component: masterData

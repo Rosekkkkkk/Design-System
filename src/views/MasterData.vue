@@ -1,140 +1,376 @@
 <template>
   <section class="master-data-view master-data-card">
     <header class="master-data-header">
-      <h1>基础资料</h1>
-      <el-button class="add-button" type="primary" :icon="Plus">{{ activeAddButtonText }}</el-button>
+      <h1>商户管理</h1>
+      <el-button class="add-button" type="primary" :icon="Plus" @click="openCreateDialog">新增商户</el-button>
     </header>
 
     <main class="master-data-body">
-      <el-tabs v-model="activeTab" class="master-tabs">
-        <el-tab-pane label="商户管理" name="merchant" />
-        <el-tab-pane label="照片类型" name="photoType" />
-        <el-tab-pane label="客户信息" name="customer" />
-      </el-tabs>
+      <div class="merchant-toolbar">
+        <el-input v-model.trim="filters.merchantName" clearable placeholder="请输入商户名称关键词" />
+        <el-button class="query-button" type="primary">搜索</el-button>
+      </div>
 
       <div class="table-panel">
-        <el-table :data="activeRows" border height="100%">
-          <el-table-column v-for="column in activeColumns" :key="column.prop" :label="column.label" :min-width="column.minWidth" :prop="column.prop" />
-          <el-table-column fixed="right" label="操作" min-width="154">
-            <template #default>
-              <el-button class="edit-button" plain size="small" type="primary">编辑</el-button>
+        <el-table :data="pagedMerchantRows" border height="100%">
+          <el-table-column label="商户名称" prop="merchantName" />
+          <el-table-column label="照片类型">
+            <template #default="{ row }: { row: MerchantRecord }">
+              <div class="type-tags">
+                <el-tag v-for="item in row.photoTypes" :key="item.id" effect="plain" round>{{ item.photoType }}</el-tag>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="关联客户数量">
+            <template #default="{ row }: { row: MerchantRecord }">{{ row.customers.length }}</template>
+          </el-table-column>
+          <el-table-column label="创建时间" prop="createdAt" />
+          <el-table-column fixed="right" label="操作" width="136">
+            <template #default="{ row }: { row: MerchantRecord }">
+              <div class="merchant-action-buttons">
+                <el-button class="detail-button" plain size="small" type="primary" @click="openDetailDialog(row)">详情</el-button>
+                <el-button class="edit-button" plain size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
       </div>
 
       <footer class="pagination-panel">
-        <el-pagination v-model:current-page="pagination.pageNo" v-model:page-size="pagination.pageSize" :pager-count="5" :total="96" layout="total, prev, pager, next, jumper" />
+        <el-pagination
+          v-model:current-page="pagination.pageNo"
+          v-model:page-size="pagination.pageSize"
+          :pager-count="5"
+          :total="filteredMerchantRows.length"
+          layout="total, prev, pager, next, jumper"
+        />
       </footer>
     </main>
+
+    <el-dialog v-model="merchantDialogVisible" class="master-form-dialog merchant-dialog" :title="dialogTitle" width="1100px" top="10vh" @closed="resetMerchantForm">
+      <el-form ref="merchantFormRef" class="merchant-editor-form" :disabled="isReadOnlyMode" :model="merchantForm" :rules="merchantRules" label-width="96px">
+        <section class="merchant-basic-card">
+          <div class="basic-title">基础信息</div>
+          <el-form-item label="商户名称" prop="merchantName">
+            <el-input v-model.trim="merchantForm.merchantName" placeholder="请输入商户名称" />
+          </el-form-item>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title">
+            <div>
+              <span>照片类型</span>
+              <small>至少维护一种类型，每种类型都需要默认接单价和派单价</small>
+            </div>
+          </div>
+
+          <div class="card-grid photo-type-grid">
+            <div v-for="(item, index) in merchantForm.photoTypes" :key="item.id" class="photo-type-card">
+              <div class="card-head">
+                <span>类型 {{ index + 1 }}</span>
+                <el-button v-if="!isReadOnlyMode" class="card-delete-button" :icon="Minus" text type="danger" title="删除" @click="removePhotoType(index)" />
+              </div>
+
+              <el-form-item label="照片类型" :prop="`photoTypes.${index}.photoType`" :rules="photoTypeNameRules">
+                <el-input v-model.trim="item.photoType" placeholder="请输入照片类型" />
+              </el-form-item>
+
+              <el-form-item label="默认接单价" :prop="`photoTypes.${index}.acceptPrice`" :rules="acceptPriceRules">
+                <el-input-number v-model="item.acceptPrice" :min="0" :precision="2" :step="1" placeholder="请输入默认接单价" />
+              </el-form-item>
+
+              <el-form-item label="默认派单价" :prop="`photoTypes.${index}.dispatchPrice`" :rules="dispatchPriceRules">
+                <el-input-number v-model="item.dispatchPrice" :min="0" :precision="2" :step="1" placeholder="请输入默认派单价" />
+              </el-form-item>
+            </div>
+
+            <button v-if="!isReadOnlyMode" class="add-card" type="button" @click="addPhotoType">
+              <span class="add-card-icon">+</span>
+              <span>添加类型</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title">
+            <div>
+              <span>客户信息</span>
+              <small>客户不是必填，可创建后继续编辑添加</small>
+            </div>
+          </div>
+
+          <div class="card-grid customer-grid">
+            <div v-for="(item, index) in merchantForm.customers" :key="item.id" class="customer-card">
+              <div class="card-head">
+                <span>客户 {{ index + 1 }}</span>
+                <el-button v-if="!isReadOnlyMode" class="card-delete-button" :icon="Minus" text type="danger" title="删除" @click="removeCustomer(index)" />
+              </div>
+
+              <el-form-item label="客户信息" :prop="`customers.${index}.customerName`" :rules="customerNameRules">
+                <el-input v-model.trim="item.customerName" placeholder="请输入客户信息" />
+              </el-form-item>
+
+              <el-form-item label="张数" :prop="`customers.${index}.photoCount`" :rules="photoCountRules">
+                <el-input-number v-model="item.photoCount" :min="1" :precision="0" :step="1" placeholder="请输入张数" />
+              </el-form-item>
+            </div>
+
+            <button v-if="!isReadOnlyMode" class="add-card" type="button" @click="addCustomer">
+              <span class="add-card-icon">+</span>
+              <span>添加客户</span>
+            </button>
+          </div>
+        </section>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="merchantDialogVisible = false">{{ isReadOnlyMode ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="!isReadOnlyMode" type="primary" @click="submitMerchantForm">确定</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import type { FormInstance, FormItemRule, FormRules } from 'element-plus'
+import { Minus, Plus } from '@element-plus/icons-vue'
+import type { MasterDataFilters, MasterDataPagination, MerchantCustomer, MerchantDialogForm, MerchantPhotoType, MerchantRecord } from '../types/MasterData'
 
-type MasterTab = 'merchant' | 'photoType' | 'customer'
+type MerchantDialogMode = 'create' | 'edit' | 'detail'
 
-interface TableColumn {
-  label: string
-  prop: string
-  minWidth: number
-}
+const pageSize = 16
+const merchantDialogVisible = ref(false)
+const merchantDialogMode = ref<MerchantDialogMode>('create')
+const editingMerchantId = ref<string | null>(null)
+const merchantFormRef = ref<FormInstance>()
 
-interface TableRow {
-  [key: string]: string | number
-}
-
-const activeTab = ref<MasterTab>('merchant')
-
-const pagination = reactive({
+const pagination = reactive<MasterDataPagination>({
   pageNo: 1,
-  pageSize: 16
+  pageSize
 })
 
-const merchantColumns: TableColumn[] = [
-  { label: '商户名称', prop: 'merchantName', minWidth: 430 },
-  { label: '照片类型数量', prop: 'photoTypeCount', minWidth: 150 },
-  { label: '客户数量', prop: 'customerCount', minWidth: 130 },
-  { label: '默认接单价', prop: 'acceptPrice', minWidth: 140 },
-  { label: '默认派单价', prop: 'dispatchPrice', minWidth: 140 },
-  { label: '创建时间', prop: 'createdAt', minWidth: 430 }
-]
+const filters = reactive<MasterDataFilters>({
+  merchantName: ''
+})
 
-const photoTypeColumns: TableColumn[] = [
-  { label: '照片类型', prop: 'photoType', minWidth: 430 },
-  { label: '默认接单价', prop: 'acceptPrice', minWidth: 150 },
-  { label: '默认派单价', prop: 'dispatchPrice', minWidth: 150 },
-  { label: '关联商户数量', prop: 'merchantCount', minWidth: 160 },
-  { label: '创建时间', prop: 'createdAt', minWidth: 530 }
-]
+const requiredRule = (message: string, trigger: 'blur' | 'change' = 'blur'): FormItemRule[] => [{ required: true, message, trigger }]
 
-const customerColumns: TableColumn[] = [
-  { label: '所属商户', prop: 'merchantName', minWidth: 260 },
-  { label: '客户名称', prop: 'customerName', minWidth: 140 },
-  { label: '默认张数', prop: 'defaultCount', minWidth: 120 },
-  { label: '联系方式', prop: 'phone', minWidth: 150 },
-  { label: '备注', prop: 'remark', minWidth: 370 },
-  { label: '创建时间', prop: 'createdAt', minWidth: 380 }
-]
+const merchantRules: FormRules<MerchantDialogForm> = {
+  merchantName: requiredRule('请输入商户名称')
+}
 
-const merchantNames = ['云帆摄影', '木石电商', '星野婚礼', '青橙影像', '森白视觉', '北岸写真', '拾光电商', '鹿鸣影像']
-const photoTypeNames = ['精修', '抠图', '调色', '排版', '证件照', '产品修图']
-const customerNames = ['李小姐', '张先生', '王女士', '赵先生', '刘女士', '何先生']
-const customerRemarks = ['常规客户', '偏好自然风', '活动客户', '长期合作']
+const photoTypeNameRules = requiredRule('请输入照片类型')
+const acceptPriceRules = requiredRule('请输入默认接单价', 'change')
+const dispatchPriceRules = requiredRule('请输入默认派单价', 'change')
+const customerNameRules = requiredRule('请输入客户信息')
+const photoCountRules = requiredRule('请输入张数', 'change')
 
-const merchantRows: TableRow[] = Array.from({ length: 16 }, (_, index) => {
-  const suffix = index > 7 ? index : ''
+const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
 
-  return {
-    merchantName: `${merchantNames[index % merchantNames.length]}${suffix}`,
-    photoTypeCount: (index % 5) + 2,
-    customerCount: index + 8,
-    acceptPrice: [12, 14, 16, 18][index % 4],
-    dispatchPrice: [8, 9, 10][index % 3],
-    createdAt: `2026-04-${String(index + 1).padStart(2, '0')} 10:20:00`
+const createPhotoType = (photoType = '', acceptPrice: number | undefined = undefined, dispatchPrice: number | undefined = undefined): MerchantPhotoType => ({
+  id: createId('type'),
+  photoType,
+  acceptPrice,
+  dispatchPrice
+})
+
+const createCustomer = (customerName = '', photoCount: number | undefined = undefined): MerchantCustomer => ({
+  id: createId('customer'),
+  customerName,
+  photoCount
+})
+
+const createEmptyForm = (): MerchantDialogForm => ({
+  merchantName: '',
+  photoTypes: [createPhotoType()],
+  customers: []
+})
+
+const cloneRecordToForm = (record: MerchantRecord): MerchantDialogForm => ({
+  merchantName: record.merchantName,
+  photoTypes: record.photoTypes.map(item => ({ ...item })),
+  customers: record.customers.map(item => ({ ...item }))
+})
+
+const merchantForm = reactive<MerchantDialogForm>(createEmptyForm())
+
+const merchantRows = reactive<MerchantRecord[]>([
+  {
+    id: 'merchant-1',
+    merchantName: '云帆摄影',
+    photoTypes: [createPhotoType('精修', 12, 8), createPhotoType('调色', 10, 7)],
+    customers: [createCustomer('李小姐', 18), createCustomer('张先生', 12)],
+    createdAt: '2026-04-01 10:20:00'
+  },
+  {
+    id: 'merchant-2',
+    merchantName: '木石电商',
+    photoTypes: [createPhotoType('抠图', 8, 5), createPhotoType('产品修图', 16, 11)],
+    customers: [createCustomer('王女士', 24)],
+    createdAt: '2026-04-02 10:20:00'
+  },
+  {
+    id: 'merchant-3',
+    merchantName: '星野婚礼',
+    photoTypes: [createPhotoType('精修', 18, 12)],
+    customers: [],
+    createdAt: '2026-04-03 10:20:00'
   }
+])
+
+const filteredMerchantRows = computed(() => {
+  const keyword = filters.merchantName.trim()
+  if (!keyword) return merchantRows
+
+  return merchantRows.filter(item => item.merchantName.includes(keyword))
 })
 
-const photoTypeRows: TableRow[] = Array.from({ length: 16 }, (_, index) => {
-  const suffix = index > 5 ? index : ''
-
-  return {
-    photoType: `${photoTypeNames[index % photoTypeNames.length]}${suffix}`,
-    acceptPrice: [12, 15, 18, 21, 24][index % 5],
-    dispatchPrice: [8, 10, 12, 14, 16][index % 5],
-    merchantCount: (index % 8) + 3,
-    createdAt: `2026-04-${String(index + 1).padStart(2, '0')} 11:00:00`
-  }
+const pagedMerchantRows = computed(() => {
+  const start = (pagination.pageNo - 1) * pagination.pageSize
+  return filteredMerchantRows.value.slice(start, start + pagination.pageSize)
 })
 
-const customerRows: TableRow[] = Array.from({ length: 16 }, (_, index) => ({
-  merchantName: merchantNames[index % merchantNames.length],
-  customerName: customerNames[index % customerNames.length],
-  defaultCount: index + 6,
-  phone: `138****${String(2300 + index)}`,
-  remark: customerRemarks[index % customerRemarks.length],
-  createdAt: `2026-04-${String(index + 1).padStart(2, '0')} 14:00:00`
-}))
-
-const activeColumns = computed(() => {
-  if (activeTab.value === 'photoType') return photoTypeColumns
-  if (activeTab.value === 'customer') return customerColumns
-  return merchantColumns
-})
-
-const activeRows = computed(() => {
-  if (activeTab.value === 'photoType') return photoTypeRows
-  if (activeTab.value === 'customer') return customerRows
-  return merchantRows
-})
-
-const activeAddButtonText = computed(() => {
-  if (activeTab.value === 'photoType') return '新增类型'
-  if (activeTab.value === 'customer') return '新增客户'
+const isReadOnlyMode = computed(() => merchantDialogMode.value === 'detail')
+const dialogTitle = computed(() => {
+  if (merchantDialogMode.value === 'detail') return '商户详情'
+  if (merchantDialogMode.value === 'edit') return '编辑商户'
   return '新增商户'
 })
+
+watch(
+  () => filters.merchantName,
+  () => {
+    pagination.pageNo = 1
+  }
+)
+
+const assignMerchantForm = (nextForm: MerchantDialogForm) => {
+  merchantForm.merchantName = nextForm.merchantName
+  merchantForm.photoTypes = nextForm.photoTypes
+  merchantForm.customers = nextForm.customers
+}
+
+const nowString = () => new Date().toLocaleString('zh-CN', { hour12: false })
+
+const openCreateDialog = async () => {
+  merchantDialogMode.value = 'create'
+  editingMerchantId.value = null
+  assignMerchantForm(createEmptyForm())
+  merchantDialogVisible.value = true
+  await nextTick()
+  merchantFormRef.value?.clearValidate()
+}
+
+const openEditDialog = async (row: MerchantRecord) => {
+  merchantDialogMode.value = 'edit'
+  editingMerchantId.value = row.id
+  assignMerchantForm(cloneRecordToForm(row))
+  merchantDialogVisible.value = true
+  await nextTick()
+  merchantFormRef.value?.clearValidate()
+}
+
+const openDetailDialog = async (row: MerchantRecord) => {
+  merchantDialogMode.value = 'detail'
+  editingMerchantId.value = row.id
+  assignMerchantForm(cloneRecordToForm(row))
+  merchantDialogVisible.value = true
+  await nextTick()
+  merchantFormRef.value?.clearValidate()
+}
+
+const addPhotoType = () => {
+  if (isReadOnlyMode.value) return
+  merchantForm.photoTypes.push(createPhotoType())
+}
+
+const confirmDelete = async (message: string) => {
+  try {
+    await ElMessageBox.confirm(message, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger'
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+const removePhotoType = async (index: number) => {
+  if (isReadOnlyMode.value) return
+
+  if (merchantForm.photoTypes.length <= 1) {
+    ElMessage.warning('至少保留一种照片类型')
+    return
+  }
+
+  const confirmed = await confirmDelete('确定删除该照片类型吗？对应的默认接单价和默认派单价也会一并删除。')
+  if (!confirmed) return
+
+  merchantForm.photoTypes.splice(index, 1)
+}
+
+const addCustomer = () => {
+  if (isReadOnlyMode.value) return
+  merchantForm.customers.push(createCustomer())
+}
+
+const removeCustomer = async (index: number) => {
+  if (isReadOnlyMode.value) return
+
+  const confirmed = await confirmDelete('确定删除该客户信息吗？')
+  if (!confirmed) return
+
+  merchantForm.customers.splice(index, 1)
+}
+
+const resetMerchantForm = () => {
+  merchantDialogMode.value = 'create'
+  editingMerchantId.value = null
+  assignMerchantForm(createEmptyForm())
+  merchantFormRef.value?.clearValidate()
+}
+
+const submitMerchantForm = async () => {
+  if (isReadOnlyMode.value) return
+  if (!merchantFormRef.value) return
+
+  if (merchantForm.photoTypes.length === 0) {
+    ElMessage.warning('至少添加一种照片类型')
+    return
+  }
+
+  try {
+    await merchantFormRef.value.validate()
+  } catch {
+    return
+  }
+
+  const nextRecord = {
+    merchantName: merchantForm.merchantName,
+    photoTypes: merchantForm.photoTypes.map(item => ({ ...item })),
+    customers: merchantForm.customers.map(item => ({ ...item }))
+  }
+
+  if (editingMerchantId.value) {
+    const target = merchantRows.find(item => item.id === editingMerchantId.value)
+    if (target) {
+      Object.assign(target, nextRecord)
+    }
+  } else {
+    merchantRows.unshift({
+      id: createId('merchant'),
+      ...nextRecord,
+      createdAt: nowString()
+    })
+  }
+
+  merchantDialogVisible.value = false
+}
 </script>
 
 <style lang="scss">
@@ -177,66 +413,42 @@ const activeAddButtonText = computed(() => {
 
 .master-data-view .master-data-body {
   display: grid;
-  grid-template-rows: 44px minmax(0, 1fr) 70px;
-  overflow: hidden;
+  grid-template-rows: 64px minmax(0, 1fr) 70px;
   min-height: 0;
-  padding: 0 22px;
+  overflow: hidden;
 }
 
-.master-data-view .master-tabs {
-  min-height: 0;
+.master-data-view .merchant-toolbar {
+  display: grid;
+  grid-template-columns: 200px 62px;
+  gap: 10px;
+  align-items: center;
+  align-content: center;
+  padding: 0 22px;
+  background: #f8fbff;
+  border-bottom: 1px solid #e1e9f5;
 
-  .el-tabs__header {
-    height: 44px;
-    margin: 0;
+  .el-input__wrapper {
+    min-height: 34px;
+    border-radius: 5px;
+    box-shadow: 0 0 0 1px #d8e2f1 inset;
   }
 
-  .el-tabs__nav-wrap {
-    height: 44px;
-
-    &::after {
-      height: 1px;
-      background: #dfe7f2;
-    }
-  }
-
-  .el-tabs__nav-scroll {
-    height: 44px;
-  }
-
-  .el-tabs__nav {
-    height: 44px;
-  }
-
-  .el-tabs__item {
-    height: 44px;
-    padding: 0 26px 0 0;
+  .el-input__inner {
     color: #001b44;
     font-size: 14px;
-    font-weight: 500;
-    line-height: 44px;
-
-    &.is-active {
-      color: #1f6bff;
-      font-weight: 700;
-    }
   }
 
-  .el-tabs__active-bar {
-    z-index: 2;
-    height: 2px;
-    background: #1f6bff;
-    border-radius: 999px;
-  }
-
-  .el-tabs__content {
-    display: none;
+  .el-input__inner::placeholder {
+    color: #9db0ca;
   }
 }
 
 .master-data-view .table-panel {
   min-height: 0;
+  padding: 0 22px;
   overflow: hidden;
+  background: #fff;
 
   .el-table {
     --el-table-border-color: #dfe7f2;
@@ -263,8 +475,37 @@ const activeAddButtonText = computed(() => {
   }
 }
 
+.master-data-view .type-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.master-data-view .detail-button,
 .master-data-view .edit-button {
   font-weight: 700;
+}
+
+.master-data-view .merchant-action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+
+  .el-button + .el-button {
+    margin-left: 0;
+  }
+}
+
+.master-data-view .query-button {
+  width: 62px;
+  height: 34px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 8px;
 }
 
 .master-data-view .pagination-panel {
@@ -299,9 +540,270 @@ const activeAddButtonText = computed(() => {
   }
 }
 
+.master-form-dialog {
+  .el-input,
+  .el-select,
+  .el-input-number {
+    width: 100%;
+  }
+
+  .el-input-number {
+    .el-input__inner {
+      text-align: left;
+    }
+  }
+}
+
+.merchant-dialog {
+  overflow: hidden;
+  border-radius: 16px;
+
+  .el-dialog__header {
+    padding: 22px 26px 18px;
+    border-bottom: 1px solid #e6edf7;
+  }
+
+  .el-dialog__title {
+    color: #001b44;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .el-dialog__body {
+    max-height: 66vh;
+    padding: 18px 24px 8px;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #f8fbff 0, #fff 150px);
+
+    &::-webkit-scrollbar {
+      width: var(--scrollbar-size);
+    }
+
+    &::-webkit-scrollbar-track {
+      background: var(--scrollbar-track-color);
+      border-radius: 999px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb-color);
+      border: 2px solid var(--scrollbar-track-color);
+      border-radius: 999px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover-color);
+    }
+  }
+
+  .el-dialog__footer {
+    padding: 14px 24px 18px;
+    border-top: 1px solid #e6edf7;
+    box-shadow: 0 -10px 24px rgba(0, 27, 68, 0.05);
+  }
+
+  .merchant-editor-form {
+    display: grid;
+    gap: 16px;
+  }
+
+  .merchant-basic-card,
+  .form-section {
+    padding: 18px;
+    background: #fff;
+    border: 1px solid #dfe8f5;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0, 27, 68, 0.06);
+  }
+
+  .merchant-basic-card {
+    .el-form-item {
+      margin-bottom: 6px;
+    }
+  }
+
+  .basic-title {
+    margin-bottom: 14px;
+    color: #001b44;
+    font-size: 15px;
+    font-weight: 900;
+  }
+
+  .form-section {
+    padding-bottom: 12px;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    color: #001b44;
+    font-size: 16px;
+    font-weight: 900;
+
+    small {
+      display: block;
+      margin-top: 5px;
+      color: #7586a3;
+      font-size: 12px;
+      font-weight: 500;
+    }
+  }
+
+  .card-grid {
+    display: grid;
+    gap: 14px;
+  }
+
+  .photo-type-grid,
+  .customer-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .photo-type-card,
+  .customer-card,
+  .add-card {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    padding: 16px 14px 18px;
+    background: #fbfdff;
+    border: 1px solid #e1eaf6;
+    border-radius: 12px;
+    box-shadow: 0 8px 18px rgba(0, 27, 68, 0.04);
+    transition: border-color 0.18s ease;
+  }
+
+  .photo-type-card,
+  .customer-card {
+
+    &:hover {
+      border-color: #7aa7ff;
+
+      .card-delete-button {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    .el-form-item {
+      margin-bottom: 8px;
+    }
+  }
+
+  .add-card {
+    min-height: 178px;
+    place-items: center;
+    align-content: center;
+    color: #2563eb;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    background: #f8fbff;
+    border-style: dashed;
+
+    &:hover {
+      border-color: #7aa7ff;
+      background: #f2f7ff;
+    }
+  }
+
+  .add-card-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    color: #fff;
+    font-size: 24px;
+    line-height: 1;
+    background: #2563eb;
+    border-radius: 50%;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 26px;
+    color: #0f2d5c;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .card-delete-button {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    color: #fff;
+    background: #ef4444;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.24);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease, background 0.16s ease;
+
+    &:hover {
+      color: #fff;
+      background: #dc2626;
+      border-color: #fff;
+    }
+
+    .el-icon {
+      font-size: 12px;
+      font-weight: 900;
+    }
+  }
+
+  .el-input__wrapper,
+  .el-input-number .el-input__wrapper {
+    min-height: 34px;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px #d8e2f1 inset;
+  }
+
+  .el-form-item__label {
+    color: #465b78;
+    font-weight: 700;
+  }
+
+  .el-form-item__content {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .el-form-item__error {
+    position: static;
+    flex: 0 0 100%;
+    width: 100%;
+    margin-top: 7px;
+    padding-top: 0;
+    line-height: 16px;
+  }
+}
+
 @media (max-width: 1200px) {
-  .master-data-view .master-data-body {
-    padding: 0 18px;
+  .master-data-view .merchant-toolbar,
+  .master-data-view .table-panel {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .master-data-view .merchant-toolbar {
+    grid-template-columns: minmax(0, 1fr) 62px;
+  }
+
+  .merchant-dialog {
+    .photo-type-grid,
+    .customer-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }
 </style>
