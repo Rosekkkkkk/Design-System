@@ -30,15 +30,7 @@
       </el-form-item>
 
       <el-form-item class="date-form-item">
-        <el-date-picker
-          v-model="filters.dateRange"
-          end-placeholder="结束时间"
-          format="YYYY-MM-DD HH:mm:ss"
-          range-separator="-"
-          start-placeholder="开始时间"
-          type="datetimerange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-        />
+        <el-date-picker v-model="filters.dateRange" end-placeholder="结束时间" format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="开始时间" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" />
       </el-form-item>
 
       <el-form-item>
@@ -46,68 +38,74 @@
       </el-form-item>
 
       <el-form-item>
-        <el-button class="query-button" type="primary">查询</el-button>
+        <el-button class="query-button" type="primary" plain :icon="Search">查询</el-button>
       </el-form-item>
 
       <el-form-item>
-        <el-button class="export-button" :disabled="!selectedOrders.length">导出数据</el-button>
+        <el-button class="create-order-button" type="success" plain :icon="Plus" @click="openCreateOrderDialog">新建订单</el-button>
       </el-form-item>
 
       <el-form-item>
-        <el-button class="summary-button" type="success">详情/汇总</el-button>
+        <el-button class="summary-button" type="success" @click="toggleTableMode">
+          <span v-for="(option, index) in tableModeSwitchOptions" :key="option.mode" class="table-mode-switch-text" :class="{ 'is-active': option.isActive }">
+            <el-icon class="table-mode-switch-icon">
+              <component :is="option.mode === 'detail' ? Document : DataAnalysis" />
+            </el-icon>
+            {{ option.label }}<span v-if="index === 0" class="table-mode-switch-separator">/</span>
+          </span>
+        </el-button>
+      </el-form-item>
+
+      <el-form-item>
+        <el-button class="export-button" plain :icon="Download" :disabled="!selectedRows.length">导出数据</el-button>
       </el-form-item>
     </el-form>
 
     <div class="table-panel">
-      <el-table :data="orders" border height="100%" stripe @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="52" />
-        <el-table-column align="center" label="序号" min-width="58" prop="index" />
-        <el-table-column label="商家名称" min-width="120" prop="merchant" />
-        <el-table-column label="照片类型" min-width="91" prop="photoType" />
-        <el-table-column label="状态" min-width="80">
-          <template #default="{ row }">
-            <span class="status-text">{{ row.status }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="设计师" min-width="80" prop="designer" />
-        <el-table-column label="订单号" min-width="150" prop="orderNo" />
-        <el-table-column label="照片张数" min-width="81" prop="photoCount" />
-        <el-table-column label="接单价" min-width="90" prop="receivePrice" />
-        <el-table-column label="接单合计" min-width="82" prop="receiveTotal" />
-        <el-table-column label="派单价" min-width="90" prop="dispatchPrice" />
-        <el-table-column label="派单合计" min-width="82" prop="dispatchTotal" />
-        <el-table-column label="客户信息" min-width="91" prop="customer" />
-        <el-table-column label="备注" min-width="300">
-          <template #default="{ row }">
-            <span class="remark-text">{{ row.remark }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="下单时间" min-width="200" prop="orderedAt" />
-        <el-table-column label="操作" min-width="164" fixed="right">
-          <template #default>
-            <el-button link type="primary">详情</el-button>
-            <el-button link type="primary">编辑</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <AllOrdersDetailTable
+        v-if="tableMode === 'detail'"
+        :key="`detail-${tableRenderKey}`"
+        :orders="pagedOrders"
+        :selected-orders="selectedDetailRows"
+        @edit-order="openEditOrderDialog"
+        @selection-change="handleDetailSelectionChange"
+      />
+      <AllOrdersSummaryTable
+        v-else
+        :key="`summary-${tableRenderKey}`"
+        :orders="pagedSummaryOrders"
+        :selected-orders="selectedSummaryRows"
+        @selection-change="handleSummarySelectionChange"
+      />
     </div>
 
     <footer class="pagination">
-      <el-pagination
-        v-model:current-page="pagination.pageNo"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[15, 30, 45, 60]"
-        :pager-count="5"
-        :total="168"
-        layout="total, sizes, prev, pager, next, jumper"
-      />
+      <el-pagination v-model:current-page="pagination.pageNo" v-model:page-size="pagination.pageSize" :page-sizes="[15, 30, 45, 60]" :pager-count="5" :total="currentTotal" layout="total, sizes, prev, pager, next, jumper" />
     </footer>
+
+    <el-dialog v-model="isCreateOrderDialogVisible" :title="orderDialogTitle" class="create-order-dialog" width="860px" destroy-on-close>
+      <CreateOrder ref="createOrderRef" class="create-order-dialog-content" :initial-form="createOrderInitialForm" @confirm="handleCreateOrderConfirm" />
+
+      <template #footer>
+        <el-button @click="isCreateOrderDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="createOrderRef?.submit()">{{ orderDialogConfirmText }}</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import type { AllOrder, AllOrdersFilters, AllOrdersPagination, AllOrderSourceRow } from '../types/AllOrders'
+import { DataAnalysis, Document, Download, Plus, Search } from '@element-plus/icons-vue'
+import { computed, reactive, ref } from 'vue'
+import AllOrdersDetailTable from '../components/AllOrdersDetailTable.vue'
+import AllOrdersSummaryTable from '../components/AllOrdersSummaryTable.vue'
+import CreateOrder from '../components/CreateOrder.vue'
+import type { AllOrder, AllOrdersFilters, AllOrdersPagination, AllOrderSourceRow, AllOrderSummary } from '../types/AllOrders'
+import type { CreateOrderForm } from '../types/CreateOrder'
+import { createTableModeSwitchOptions, type AllOrdersTableMode } from '../utils/allOrdersTableMode'
+import { getAllOrderSelectionKey, getAllOrderSummarySelectionKey, getPagedRows, mergePagedSelection } from '../utils/allOrdersSelection'
+
+type OrderDialogMode = 'create' | 'edit'
 
 const filters = reactive<AllOrdersFilters>({
   merchants: [],
@@ -115,15 +113,39 @@ const filters = reactive<AllOrdersFilters>({
   statuses: [],
   designers: [],
   dateRange: [] as string[],
-  keyword: '',
+  keyword: ''
 })
 
 const pagination = reactive<AllOrdersPagination>({
   pageNo: 1,
-  pageSize: 15,
+  pageSize: 15
 })
 
-const selectedOrders = ref<AllOrder[]>([])
+const selectedDetailRows = ref<AllOrder[]>([])
+const selectedSummaryRows = ref<AllOrderSummary[]>([])
+const tableMode = ref<AllOrdersTableMode>('detail')
+const tableRenderKey = ref(0)
+const isCreateOrderDialogVisible = ref(false)
+const createOrderRef = ref<InstanceType<typeof CreateOrder>>()
+const orderDialogMode = ref<OrderDialogMode>('create')
+const orderDialogTitle = computed(() => (orderDialogMode.value === 'edit' ? '编辑订单' : '新建订单'))
+const orderDialogConfirmText = computed(() => (orderDialogMode.value === 'edit' ? '确认修改' : '确认添加'))
+const tableModeSwitchOptions = computed(() => createTableModeSwitchOptions(tableMode.value))
+const selectedRows = computed(() => (tableMode.value === 'detail' ? selectedDetailRows.value : selectedSummaryRows.value))
+
+const getEmptyCreateOrderForm = (): CreateOrderForm => ({
+  merchantName: '',
+  customerInfo: '',
+  photoType: '',
+  photoCount: '',
+  acceptUnitPrice: '',
+  dispatchUnitPrice: '',
+  orderNo: '',
+  orderedAt: '',
+  remark: ''
+})
+
+const createOrderInitialForm = ref<CreateOrderForm>(getEmptyCreateOrderForm())
 
 const merchantOptions = ['云帆摄影', '木石电商', '星野婚礼', '青橙影像', '森白视觉', '北岸写真']
 const photoTypeOptions = ['精修', '抠图', '调色', '排版', '证件照', '产品修图']
@@ -147,37 +169,102 @@ const source: AllOrderSourceRow[] = [
   ['北岸写真', '抠图', '未完工', '陈设计', 'DD20260425014', 20, 14, 9, '张先生', '客户待确认', '2026-04-23 09:23:00'],
   ['拾光电商', '调色', '待审核', '周设计', 'DD20260425015', 23, 16, 10, '王女士', '周末前交付', '2026-04-24 09:24:00'],
   ['鹿鸣影像', '排版', '已完工', '王设计', 'DD20260425016', 26, 18, 11, '赵先生', '加急处理', '2026-04-25 09:25:00'],
-  ['云帆摄影', '证件照', '问题件', '何设计', 'DD20260425017', 29, 12, 8, '刘女士', '保持肤色自然', '2026-04-10 09:26:00'],
+  ['云帆摄影', '证件照', '问题件', '何设计', 'DD20260425017', 29, 12, 8, '刘女士', '保持肤色自然', '2026-04-10 09:26:00']
 ]
 
-const orders: AllOrder[] = source.map(
-  ([merchant, photoType, status, designer, orderNo, photoCount, receivePrice, dispatchPrice, customer, remark, orderedAt], index) => ({
-    index: index + 1,
-    merchant,
-    photoType,
-    status,
-    designer,
-    orderNo,
-    photoCount,
-    receivePrice,
-    receiveTotal: photoCount * receivePrice,
-    dispatchPrice,
-    dispatchTotal: photoCount * dispatchPrice,
-    customer,
-    remark,
-    orderedAt,
-  }),
-)
+const orders: AllOrder[] = source.map(([merchant, photoType, status, designer, orderNo, photoCount, receivePrice, dispatchPrice, customer, remark, orderedAt], index) => ({
+  index: index + 1,
+  merchant,
+  photoType,
+  status,
+  designer,
+  orderNo,
+  photoCount,
+  receivePrice,
+  receiveTotal: photoCount * receivePrice,
+  dispatchPrice,
+  dispatchTotal: photoCount * dispatchPrice,
+  customer,
+  remark,
+  orderedAt
+}))
 
-const handleSelectionChange = (selection: AllOrder[]) => {
-  selectedOrders.value = selection
+const summaryMerchants = ['云帆摄影', '木石电商', '星野婚礼', '青橙影像', '森白视觉', '北岸写真', '拾光电商', '鹿鸣影像']
+
+const summaryOrders: AllOrderSummary[] = Array.from({ length: 17 }, (_, index) => {
+  const receiveTotal = 4680 + index * 330
+  const dispatchTotal = 3160 + index * 260
+
+  return {
+    index: index + 1,
+    merchant: summaryMerchants[index % summaryMerchants.length],
+    orderCount: 18 + index * 2,
+    photoCount: 248 + index * 18,
+    receiveTotal,
+    dispatchTotal,
+    profit: receiveTotal - dispatchTotal,
+    orderedAt: `2026-04-${String(index + 1).padStart(2, '0')} 00:00:00`
+  }
+})
+
+const pagedOrders = computed(() => getPagedRows(orders, pagination.pageNo, pagination.pageSize))
+const pagedSummaryOrders = computed(() => getPagedRows(summaryOrders, pagination.pageNo, pagination.pageSize))
+const currentTotal = computed(() => (tableMode.value === 'detail' ? orders.length : summaryOrders.length))
+
+const handleDetailSelectionChange = (selection: AllOrder[]) => {
+  selectedDetailRows.value = mergePagedSelection(selectedDetailRows.value, selection, pagedOrders.value, getAllOrderSelectionKey)
+}
+
+const handleSummarySelectionChange = (selection: AllOrderSummary[]) => {
+  selectedSummaryRows.value = mergePagedSelection(selectedSummaryRows.value, selection, pagedSummaryOrders.value, getAllOrderSummarySelectionKey)
+}
+
+const resetTableSwitchState = () => {
+  filters.keyword = ''
+  selectedDetailRows.value = []
+  selectedSummaryRows.value = []
+  pagination.pageNo = 1
+  tableRenderKey.value += 1
+}
+
+const toggleTableMode = () => {
+  tableMode.value = tableMode.value === 'detail' ? 'summary' : 'detail'
+  resetTableSwitchState()
+}
+
+const mapOrderToCreateOrderForm = (order: AllOrder): CreateOrderForm => ({
+  merchantName: order.merchant,
+  customerInfo: order.customer,
+  photoType: order.photoType,
+  photoCount: String(order.photoCount),
+  acceptUnitPrice: String(order.receivePrice),
+  dispatchUnitPrice: String(order.dispatchPrice),
+  orderNo: order.orderNo,
+  orderedAt: order.orderedAt,
+  remark: order.remark
+})
+
+const openCreateOrderDialog = () => {
+  orderDialogMode.value = 'create'
+  createOrderInitialForm.value = getEmptyCreateOrderForm()
+  isCreateOrderDialogVisible.value = true
+}
+
+const openEditOrderDialog = (order: AllOrder) => {
+  orderDialogMode.value = 'edit'
+  createOrderInitialForm.value = mapOrderToCreateOrderForm(order)
+  isCreateOrderDialogVisible.value = true
+}
+
+const handleCreateOrderConfirm = (_form: CreateOrderForm) => {
+  isCreateOrderDialogVisible.value = false
 }
 </script>
 
 <style scoped lang="scss">
 .all-orders-card {
   display: grid;
-  grid-template-rows: 56px 64px minmax(0, 1fr) 72px;
+  grid-template-rows: 56px minmax(64px, auto) minmax(0, 1fr) 72px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -190,6 +277,7 @@ const handleSelectionChange = (selection: AllOrder[]) => {
 .orders-title {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 30px;
   border-bottom: 1px solid #e8eef7;
 
@@ -202,13 +290,22 @@ const handleSelectionChange = (selection: AllOrder[]) => {
   }
 }
 
+.create-order-button {
+  height: 34px;
+  width: 112px;
+  padding: 0 14px;
+  font-weight: 800;
+  border-radius: 8px;
+}
+
 .orders-filter {
   display: grid;
-  grid-template-columns: 154px 154px 154px 154px minmax(245px, 306px) 184px 62px 84px 96px;
-  gap: 10px;
+  grid-template-columns: 154px 154px 154px 154px minmax(245px, 306px) 184px 72px 112px 142px 104px;
+  gap: 12px;
   align-items: center;
-  min-height: 0;
-  padding: 0 22px;
+  align-content: center;
+  min-height: 64px;
+  padding: 12px 22px;
   margin: 0;
   background: #f8fbff;
   border-bottom: 1px solid #dfe8f4;
@@ -248,18 +345,18 @@ const handleSelectionChange = (selection: AllOrder[]) => {
 .query-button,
 .export-button,
 .summary-button {
-  height: 33px;
+  height: 34px;
   padding: 0;
   font-weight: 800;
   border-radius: 8px;
 }
 
 .query-button {
-  width: 62px;
+  width: 72px;
 }
 
 .export-button {
-  width: 84px;
+  width: 104px;
   color: #1f5fe8;
   background: #fff;
   border: 1px solid #d8e2f1;
@@ -274,9 +371,53 @@ const handleSelectionChange = (selection: AllOrder[]) => {
 }
 
 .summary-button {
-  width: 96px;
-  background: #1fc66a;
-  border-color: #1fc66a;
+  width: 142px;
+  color: #001b44;
+  background: #fff;
+  border: 1px solid #d8e2f1;
+
+  :deep(span) {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  &:hover,
+  &:focus {
+    color: #001b44;
+    background: #f8fbff;
+    border-color: #8fb6ff;
+  }
+}
+
+.table-mode-switch-text {
+  min-width: 55px;
+  gap: 3px;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: #4f6688;
+  transition:
+    color 0.16s ease,
+    font-size 0.16s ease,
+    font-weight 0.16s ease;
+
+  &.is-active {
+    color: #0057ff;
+    font-size: 16px;
+    font-weight: 900;
+  }
+}
+
+.table-mode-switch-icon {
+  font-size: 13px;
+}
+
+.table-mode-switch-separator {
+  margin: 0 2px 0 4px;
+  color: #9cadc5;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .table-panel {
@@ -321,9 +462,12 @@ const handleSelectionChange = (selection: AllOrder[]) => {
   }
 }
 
-.status-text,
-.remark-text {
-  color: #0057ff;
+.table-panel {
+  :deep(.status-text),
+  :deep(.remark-text),
+  :deep(.summary-detail-button) {
+    color: #0057ff;
+  }
 }
 
 .pagination {
@@ -334,6 +478,49 @@ const handleSelectionChange = (selection: AllOrder[]) => {
   :deep(.el-pager) {
     gap: 6px;
   }
+}
+
+:deep(.create-order-dialog) {
+  --el-dialog-padding-primary: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+:deep(.create-order-dialog .el-dialog__header) {
+  padding: 20px 34px 12px;
+  margin-right: 42px;
+}
+
+:deep(.create-order-dialog .el-dialog__title) {
+  color: #001b44;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 24px;
+}
+
+:deep(.create-order-dialog .el-dialog__headerbtn) {
+  top: 11px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+
+  &:hover {
+    background: #eef4ff;
+  }
+}
+
+:deep(.create-order-dialog .el-dialog__body) {
+  padding: 0;
+}
+
+.create-order-dialog-content {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:deep(.create-order-dialog .el-dialog__footer) {
+  padding: 12px 34px 24px;
 }
 
 @media (max-width: 1500px) {

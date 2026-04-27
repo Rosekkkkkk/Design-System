@@ -1,0 +1,6 @@
+id,task,status,acceptance_criteria,validation_command,completed_at,retry_count,notes
+1,Read project and component context,DONE,package and AllOrders context reviewed,Get-Content -Raw package.json,,0,
+2,Write failing verification,DONE,verification fails before implementation,node .codex-tasks/20260427-all-orders-table-toggle/verify-all-orders-toggle.mjs,2026-04-27,0,failed as expected because table components were missing
+3,Implement table components and toggle,DONE,AllOrders imports both table components and resets switch state,npm run build,2026-04-27,0,
+4,Run final verification,DONE,custom check and build pass,node .codex-tasks/20260427-all-orders-table-toggle/verify-all-orders-toggle.mjs; npm run build,2026-04-27,0,
+5,Summarize result,DONE,user receives concise change and verification summary,manual,2026-04-27,0,

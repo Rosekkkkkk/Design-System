@@ -5,7 +5,7 @@
         <el-icon class="brand-mark" aria-hidden="true">
           <Grid />
         </el-icon>
-        <span class="brand-title">设计调度管理系统</span>
+        <span class="brand-title">管理系统</span>
       </div>
 
       <div class="user-area">
@@ -47,15 +47,13 @@ const handleLogout = () => {
   grid-template-rows: 72px minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 100% 66%, rgba(31, 105, 241, 0.34), transparent 18%),
-    linear-gradient(180deg, #0b2a5a 0 72px, #061a3a 72px 100%);
+  background: radial-gradient(circle at 100% 66%, rgba(31, 105, 241, 0.34), transparent 18%), linear-gradient(180deg, #0b2a5a 0 72px, #061a3a 72px 100%);
 
   &::before,
   &::after {
     position: fixed;
     z-index: 0;
-    content: "";
+    content: '';
     pointer-events: none;
     border: 1px solid rgba(65, 135, 255, 0.24);
     border-color: rgba(65, 135, 255, 0.24) transparent transparent transparent;

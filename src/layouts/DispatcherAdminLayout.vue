@@ -5,25 +5,32 @@
         <el-icon class="brand-mark" aria-hidden="true">
           <Grid />
         </el-icon>
-        <span class="brand-title">设计调度管理系统</span>
+        <span class="brand-title">管理系统</span>
       </div>
 
       <div class="user-area">
         <span class="user-name">{{ userName }}</span>
-        <button class="user-avatar" type="button" title="退出登录" @click="handleLogout">{{ avatarText }}</button>
+        <el-dropdown trigger="click" @command="handleUserCommand">
+          <button class="user-avatar" type="button" title="账户菜单">
+            <el-icon>
+              <User />
+            </el-icon>
+          </button>
+
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="account">修改账户</el-dropdown-item>
+              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </header>
 
     <div class="manager-body">
       <aside class="sidebar">
         <nav class="sidebar-menu" aria-label="后台菜单">
-          <button
-            v-for="item in visibleMenus"
-            :key="item.path"
-            :class="{ active: isActive(item.path) }"
-            type="button"
-            @click="router.push(item.path)"
-          >
+          <button v-for="item in visibleMenus" :key="item.path" :class="{ active: isActive(item.path) }" type="button" @click="router.push(item.path)">
             <span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
             <span>{{ item.label }}</span>
           </button>
@@ -36,14 +43,42 @@
         </slot>
       </main>
     </div>
+
+    <el-dialog v-model="accountDialogVisible" class="account-settings-dialog" title="个人设置" width="480px" :show-close="false" destroy-on-close>
+      <el-form ref="accountFormRef" class="account-settings-form" :model="accountForm" :rules="accountRules" label-position="left">
+        <el-form-item label="用户名" prop="realName">
+          <el-input v-model="accountForm.realName" placeholder="请输入用户名" />
+        </el-form-item>
+
+        <el-form-item label="当前角色" prop="roleName">
+          <el-input v-model="accountForm.roleName" disabled />
+        </el-form-item>
+
+        <el-form-item label="登录账号" prop="username">
+          <el-input v-model="accountForm.username" placeholder="请输入登录账号" />
+        </el-form-item>
+
+        <el-form-item label="登录密码" prop="password">
+          <el-input v-model="accountForm.password" placeholder="请输入登录密码" show-password type="password" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="accountDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveAccount">保存修改</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Grid } from '@element-plus/icons-vue'
+import { computed, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
+import { Grid, User } from '@element-plus/icons-vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { clearAuthStorage, getStoredUser } from '../libs/request/auth'
+import { clearAuthStorage, getStoredUser, setStoredUser } from '../libs/request/auth'
+import type { StoredUser } from '../libs/request/auth'
 
 type ManagerRole = 'DISPATCHER' | 'ADMIN'
 
@@ -54,27 +89,49 @@ interface MenuItem {
   roles: ManagerRole[]
 }
 
+interface AccountForm {
+  realName: string
+  roleName: string
+  username: string
+  password: string
+}
+
 const route = useRoute()
 const router = useRouter()
-const user = computed(() => getStoredUser())
+const storedUser = ref<StoredUser | null>(getStoredUser())
+const accountDialogVisible = ref(false)
+const accountFormRef = ref<FormInstance>()
+const accountForm = reactive<AccountForm>({
+  realName: '',
+  roleName: '',
+  username: '',
+  password: ''
+})
 
 const roleNameMap = {
   DISPATCHER: '调度主管',
-  ADMIN: '超级管理',
+  ADMIN: '超级管理'
 } as const
+
+const requiredRule = (message: string) => [{ required: true, whitespace: true, message, trigger: 'blur' }]
+
+const accountRules = reactive<FormRules<AccountForm>>({
+  realName: requiredRule('请输入用户名'),
+  roleName: requiredRule('请输入当前角色'),
+  username: requiredRule('请输入登录账号'),
+  password: requiredRule('请输入登录密码')
+})
 
 const menus: MenuItem[] = [
   { label: '全部订单', path: '/orders', icon: '目', roles: ['DISPATCHER', 'ADMIN'] },
   { label: '基础资料', path: '/master-data', icon: '◉', roles: ['DISPATCHER', 'ADMIN'] },
-  { label: '新建订单', path: '/create-order', icon: '⊞', roles: ['DISPATCHER', 'ADMIN'] },
-  { label: '派单管理', path: '/dispatch-management', icon: '↗', roles: ['DISPATCHER', 'ADMIN'] },
-  { label: '用户管理', path: '/user-management', icon: '♙', roles: ['ADMIN'] },
+  { label: '用户管理', path: '/user-management', icon: '♙', roles: ['ADMIN'] }
 ]
 
-const userRole = computed<ManagerRole>(() => (user.value?.role === 'ADMIN' ? 'ADMIN' : 'DISPATCHER'))
-const userName = computed(() => user.value?.realName || user.value?.username || roleNameMap[userRole.value])
-const avatarText = computed(() => (userRole.value === 'ADMIN' ? '管' : '调'))
-const visibleMenus = computed(() => menus.filter((item) => item.roles.includes(userRole.value)))
+const userRole = computed<ManagerRole>(() => (storedUser.value?.role === 'ADMIN' ? 'ADMIN' : 'DISPATCHER'))
+const userName = computed(() => storedUser.value?.realName || storedUser.value?.username || roleNameMap[userRole.value])
+// const visibleMenus = computed(() => menus.filter(item => item.roles.includes(userRole.value)))
+const visibleMenus = computed(() => menus)
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(`${path}/`)
 
@@ -85,6 +142,52 @@ const goHome = () => {
 const handleLogout = () => {
   clearAuthStorage()
   router.replace({ name: 'Login' })
+}
+
+const handleUserCommand = (command: string | number | object) => {
+  if (command === 'logout') {
+    handleLogout()
+    return
+  }
+
+  if (command === 'account') {
+    openAccountDialog()
+  }
+}
+
+const openAccountDialog = () => {
+  accountForm.realName = storedUser.value?.realName || userName.value
+  accountForm.roleName = roleNameMap[userRole.value]
+  accountForm.username = storedUser.value?.username || ''
+  accountForm.password = ''
+  accountDialogVisible.value = true
+  accountFormRef.value?.clearValidate()
+}
+
+const handleSaveAccount = async () => {
+  if (!accountFormRef.value) return
+
+  try {
+    await accountFormRef.value.validate()
+  } catch {
+    return
+  }
+
+  if (!storedUser.value) {
+    accountDialogVisible.value = false
+    return
+  }
+
+  const nextUser = {
+    ...storedUser.value,
+    realName: accountForm.realName,
+    username: accountForm.username
+  }
+
+  setStoredUser(nextUser)
+  storedUser.value = nextUser
+  accountDialogVisible.value = false
+  ElMessage.success('保存成功')
 }
 </script>
 
@@ -97,15 +200,13 @@ const handleLogout = () => {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 100% 66%, rgba(31, 105, 241, 0.34), transparent 18%),
-    linear-gradient(180deg, #0b2a5a 0 72px, #061a3a 72px 100%);
+  background: radial-gradient(circle at 100% 66%, rgba(31, 105, 241, 0.34), transparent 18%), linear-gradient(180deg, #0b2a5a 0 72px, #061a3a 72px 100%);
 
   &::before,
   &::after {
     position: fixed;
     z-index: 0;
-    content: "";
+    content: '';
     pointer-events: none;
     border: 1px solid rgba(65, 135, 255, 0.24);
     border-color: rgba(65, 135, 255, 0.24) transparent transparent transparent;
@@ -194,12 +295,92 @@ const handleLogout = () => {
   display: grid;
   width: 36px;
   height: 36px;
+  padding: 0;
   place-items: center;
   color: #1153d8;
-  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
   background: #dbe9ff;
+  border: 0;
   border-radius: 50%;
+
+  :deep(svg) {
+    display: block;
+    width: 1em;
+    height: 1em;
+  }
+}
+
+:deep(.account-settings-dialog) {
+  --el-dialog-padding-primary: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+:deep(.account-settings-dialog .el-dialog__header) {
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid #e6edf7;
+}
+
+:deep(.account-settings-dialog .el-dialog__title) {
+  color: #001b44;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+:deep(.account-settings-dialog .el-dialog__body) {
+  padding: 28px 64px 40px 42px;
+}
+
+:deep(.account-settings-dialog .el-dialog__footer) {
+  padding: 0 20px 14px;
+}
+
+.account-settings-form {
+  display: grid;
+  gap: 18px;
+
+  :deep(.el-form-item) {
+    align-items: center;
+    margin: 0;
+  }
+
+  :deep(.el-form-item__label) {
+    flex: 0 0 90px;
+    width: 90px;
+    padding-right: 0;
+    color: #001b44;
+    font-size: 14px;
+    line-height: 36px;
+    white-space: nowrap;
+  }
+
+  :deep(.el-form-item__content) {
+    min-width: 0;
+  }
+
+  :deep(.el-form-item__error) {
+    padding-top: 3px;
+    color: #f56c6c;
+    font-size: 12px;
+  }
+
+  :deep(.el-input__wrapper) {
+    min-height: 36px;
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px #d4dfef inset;
+  }
+
+  :deep(.el-input__inner) {
+    color: #001b44;
+    font-size: 14px;
+  }
+
+  :deep(.el-input__inner::placeholder) {
+    color: #9db0ca;
+  }
 }
 
 .manager-body {

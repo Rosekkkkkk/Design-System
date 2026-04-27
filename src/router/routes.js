@@ -12,8 +12,6 @@ export const getHomePath = () => {
 
 const allOrders = () => import('../views/AllOrders.vue')
 const masterData = () => import('../views/MasterData.vue')
-const createOrder = () => import('../views/CreateOrder.vue')
-const dispatchManagement = () => import('../views/DispatchManagement.vue')
 const userManagement = () => import('../views/UserManagement.vue')
 const designerOrders = () => import('../views/DesignerOrders.vue')
 
@@ -22,16 +20,16 @@ export const routes = [
     path: '/',
     name: LOGIN_ROUTE_NAME,
     meta: {
-      public: true,
+      public: true
     },
-    component: () => import('../views/login.vue'),
+    component: () => import('../views/login.vue')
   },
   {
     path: '/',
     component: () => import('../layouts/DispatcherAdminLayout.vue'),
     redirect: MANAGER_HOME,
     meta: {
-      roles: ['DISPATCHER', 'ADMIN'],
+      roles: ['DISPATCHER', 'ADMIN']
     },
     children: [
       {
@@ -39,54 +37,36 @@ export const routes = [
         name: 'OrderList',
         meta: {
           title: '全部订单',
-          roles: ['DISPATCHER', 'ADMIN'],
+          roles: ['DISPATCHER', 'ADMIN']
         },
-        component: allOrders,
+        component: allOrders
       },
       {
         path: 'master-data',
         name: 'MasterData',
         meta: {
           title: '基础资料',
-          roles: ['DISPATCHER', 'ADMIN'],
+          roles: ['DISPATCHER', 'ADMIN']
         },
-        component: masterData,
-      },
-      {
-        path: 'create-order',
-        name: 'OrderCreate',
-        meta: {
-          title: '新建订单',
-          roles: ['DISPATCHER', 'ADMIN'],
-        },
-        component: createOrder,
-      },
-      {
-        path: 'dispatch-management',
-        name: 'DispatchManagement',
-        meta: {
-          title: '派单管理',
-          roles: ['DISPATCHER', 'ADMIN'],
-        },
-        component: dispatchManagement,
+        component: masterData
       },
       {
         path: 'user-management',
         name: 'UserManagement',
         meta: {
           title: '用户管理',
-          roles: ['ADMIN'],
+          roles: ['ADMIN']
         },
-        component: userManagement,
-      },
-    ],
+        component: userManagement
+      }
+    ]
   },
   {
     path: '/designer',
     component: () => import('../layouts/DesignerLayout.vue'),
     redirect: DESIGNER_HOME,
     meta: {
-      roles: ['DESIGNER'],
+      roles: ['DESIGNER']
     },
     children: [
       {
@@ -94,14 +74,14 @@ export const routes = [
         name: 'DesignerOrders',
         meta: {
           title: '全部订单',
-          roles: ['DESIGNER'],
+          roles: ['DESIGNER']
         },
-        component: designerOrders,
-      },
-    ],
+        component: designerOrders
+      }
+    ]
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: () => getHomePath(),
-  },
+    redirect: () => getHomePath()
+  }
 ]

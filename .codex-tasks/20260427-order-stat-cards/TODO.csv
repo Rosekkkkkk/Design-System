@@ -1,0 +1,5 @@
+id,task,status,acceptance_criteria,validation_command,completed_at,retry_count,notes
+1,建立统计工具红测,DONE,类型检查因缺少统计工具失败,npx vue-tsc -b --noEmit,2026-04-27 17:00,0,按预期失败：Cannot find module './allOrdersStats'
+2,实现统计工具和统计卡片组件,DONE,统计 API 类型正确且组件可复用,npx vue-tsc -b --noEmit,2026-04-27 17:03,0,类型检查通过
+3,接入明细表与汇总表,DONE,两个组件展示对应卡片并保持一行,npm run build,2026-04-27 17:08,0,构建通过
+4,最终验证,DONE,构建通过且任务记录完整,npm run build,2026-04-27 17:08,0,构建通过；开发服务 http://127.0.0.1:5174/ 返回 200

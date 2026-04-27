@@ -15,6 +15,17 @@ export interface AllOrder {
   orderedAt: string
 }
 
+export interface AllOrderSummary {
+  index: number
+  merchant: string
+  orderCount: number
+  photoCount: number
+  receiveTotal: number
+  dispatchTotal: number
+  profit: number
+  orderedAt: string
+}
+
 export interface AllOrdersFilters {
   merchants: string[]
   photoTypes: string[]

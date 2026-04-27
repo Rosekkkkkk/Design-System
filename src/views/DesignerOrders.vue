@@ -61,7 +61,7 @@
         <el-table-column label="下单时间" min-width="270" prop="orderedAt" />
         <el-table-column label="操作" min-width="88">
           <template #default>
-            <el-button link type="primary">完工</el-button>
+            <el-button plain size="small" type="success">完工</el-button>
           </template>
         </el-table-column>
       </el-table>
