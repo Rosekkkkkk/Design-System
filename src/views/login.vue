@@ -94,13 +94,12 @@
         <div class="form-options">
           <label class="remember-password">
             <input v-model="loginForm.remember" type="checkbox" />
-            <span>记住密码</span>
+            <span>记住账号</span>
           </label>
-          <a href="javascript:void(0)">忘记密码</a>
         </div>
 
-        <button class="login-copy-button" type="submit">
-          <span>登录</span>
+        <button class="login-copy-button" type="submit" :disabled="isLoggingIn">
+          <span>{{ isLoggingIn ? '登录中...' : '登录' }}</span>
           <i aria-hidden="true">→</i>
         </button>
 
@@ -111,16 +110,29 @@
 
 <script setup lang="ts">
 import { Hide, Lock, User as UserIcon, View } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { loginApi } from '../api/auth'
+import { RequestError } from '../libs/request'
+import { setStoredUser, setTokens } from '../libs/request/auth'
+import { getHomePath } from '../router/routes'
 import type { LoginForm } from '../types/login'
 
+const REMEMBER_ACCOUNT_KEY = 'design_dispatch_remember_account'
+
+const route = useRoute()
+const router = useRouter()
+const rememberedAccount = localStorage.getItem(REMEMBER_ACCOUNT_KEY) || ''
+
 const loginForm = reactive<LoginForm>({
-  account: '',
+  account: rememberedAccount,
   password: '',
   remember: true
 })
 
 const passwordVisible = ref(false)
+const isLoggingIn = ref(false)
 
 const particles = Array.from({ length: 72 }, (_, index) => {
   const i = index + 1
@@ -137,11 +149,59 @@ const particles = Array.from({ length: 72 }, (_, index) => {
   }
 })
 
-const handleLogin = () => {
-  console.log('login copy submit', {
-    account: loginForm.account,
-    remember: loginForm.remember
-  })
+const getRedirectPath = () => {
+  const redirect = route.query.redirect
+  const redirectPath = Array.isArray(redirect) ? redirect[0] : redirect
+
+  if (typeof redirectPath === 'string' && redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
+    return redirectPath
+  }
+
+  return getHomePath()
+}
+
+const handleLogin = async () => {
+  if (isLoggingIn.value) {
+    return
+  }
+
+  const username = loginForm.account.trim()
+
+  if (!username) {
+    ElMessage.warning('请输入账号')
+    return
+  }
+
+  if (!loginForm.password) {
+    ElMessage.warning('请输入密码')
+    return
+  }
+
+  isLoggingIn.value = true
+
+  try {
+    const result = await loginApi({
+      username,
+      password: loginForm.password
+    })
+
+    setTokens(result.accessToken, result.refreshToken)
+    setStoredUser(result.user)
+
+    if (loginForm.remember) {
+      localStorage.setItem(REMEMBER_ACCOUNT_KEY, username)
+    } else {
+      localStorage.removeItem(REMEMBER_ACCOUNT_KEY)
+    }
+
+    ElMessage.success('登录成功')
+    await router.replace(getRedirectPath())
+  } catch (error) {
+    const message = error instanceof RequestError ? error.message : '登录失败，请稍后重试'
+    ElMessage.error(message)
+  } finally {
+    isLoggingIn.value = false
+  }
 }
 </script>
 
@@ -807,6 +867,14 @@ const handleLogin = () => {
     box-shadow:
       0 22px 40px rgba(39, 120, 246, 0.36),
       0 0 0 1px rgba(255, 255, 255, 0.38) inset;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
+    box-shadow:
+      0 12px 24px rgba(39, 120, 246, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.22) inset;
   }
 }
 

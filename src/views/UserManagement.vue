@@ -23,7 +23,7 @@
       </el-form>
 
       <div class="user-table-panel">
-        <el-table :data="pagedUsers" border height="100%">
+        <el-table v-loading="tableLoading" :data="users" border height="100%">
           <el-table-column label="用户名" prop="realName" />
           <el-table-column label="登录账号" prop="username" />
           <el-table-column label="当前角色">
@@ -36,7 +36,7 @@
             <template #default="{ row }">
               <div class="user-action-buttons">
                 <el-button class="edit-button" plain size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
-                <el-button class="delete-button" plain size="small" type="danger" @click="handleDeleteUser(row)">删除</el-button>
+                <el-button v-if="!isCurrentUser(row)" class="delete-button" plain size="small" type="danger" @click="handleDeleteUser(row)">删除</el-button>
               </div>
             </template>
           </el-table-column>
@@ -44,7 +44,16 @@
       </div>
 
       <footer class="user-pagination">
-        <el-pagination v-model:current-page="pagination.pageNo" v-model:page-size="pagination.pageSize" :pager-count="5" :total="filteredUsers.length" layout="total, prev, pager, next, jumper" />
+        <el-pagination
+          v-model:current-page="pagination.pageNo"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[15, 30, 45, 60]"
+          :pager-count="5"
+          :total="userTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
+        />
       </footer>
     </main>
 
@@ -54,46 +63,49 @@
           <el-input v-model="userForm.realName" placeholder="请输入用户名" />
         </el-form-item>
 
-        <el-form-item label="当前角色" prop="role">
-          <el-select v-model="userForm.role" placeholder="请选择当前角色">
+        <el-form-item :label="dialogMode === 'create' ? '用户角色' : '当前角色'" prop="role">
+          <el-select v-model="userForm.role" :disabled="isRoleLocked" placeholder="请选择当前角色">
+            <el-option v-if="userForm.role === 'ADMIN'" disabled label="超级管理员" value="ADMIN" />
             <el-option v-for="item in roleOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
 
         <el-form-item label="登录账号" prop="username">
-          <el-input v-model="userForm.username" placeholder="请输入登录账号" />
+          <el-input
+            v-model.trim="userForm.username"
+            :disabled="dialogMode === 'edit'"
+            :name="dialogMode === 'create' ? 'new-user-account' : 'edit-user-account'"
+            autocomplete="off"
+            placeholder="请输入登录账号"
+          />
         </el-form-item>
 
         <el-form-item label="登录密码" prop="password">
-          <el-input v-model="userForm.password" placeholder="请输入登录密码" show-password type="password" />
+          <el-input v-model="userForm.password" autocomplete="new-password" name="new-user-password" placeholder="请输入登录密码" show-password type="password" />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveUser">保存修改</el-button>
+        <el-button :disabled="saveLoading" @click="dialogVisible = false">取消</el-button>
+        <el-button :loading="saveLoading" type="primary" @click="handleSaveUser">提交</el-button>
       </template>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import type { UserRole } from '../api/types'
+import { createUserApi, deleteUserApi, getUserListApi, updateUserApi } from '../api/users'
+import type { UserRole, UserStatus, UserVO } from '../api/types'
+import { RequestError } from '../libs/request'
+import { getStoredUser, setStoredUser } from '../libs/request/auth'
 
 type UserTableRole = Extract<UserRole, 'ADMIN' | 'DISPATCHER' | 'DESIGNER'>
+type EditableUserRole = Exclude<UserTableRole, 'ADMIN'>
 type DialogMode = 'create' | 'edit'
-
-interface UserRecord {
-  id: number
-  realName: string
-  username: string
-  role: UserTableRole
-  createdAt: string
-}
 
 interface UserFilters {
   keyword: string
@@ -106,21 +118,23 @@ interface UserForm {
   username: string
   password: string
   role: UserTableRole
+  status: UserStatus
 }
 
-const roleLabelMap: Record<UserTableRole, string> = {
+const roleLabelMap: Record<UserRole, string> = {
   ADMIN: '超级管理员',
   DISPATCHER: '调度',
   DESIGNER: '设计师'
 }
 
-const roleOptions: Array<{ label: string; value: UserTableRole }> = [
-  { label: '超级管理员', value: 'ADMIN' },
+const roleOptions: Array<{ label: string; value: EditableUserRole }> = [
   { label: '调度', value: 'DISPATCHER' },
   { label: '设计师', value: 'DESIGNER' }
 ]
 
-const getRoleLabel = (role: UserTableRole) => roleLabelMap[role]
+const getRoleLabel = (role: UserRole) => roleLabelMap[role]
+const getErrorMessage = (error: unknown, fallback: string) => (error instanceof RequestError ? error.message : fallback)
+const isCurrentUser = (row: UserVO) => currentUser.value?.id === row.id
 
 const filters = reactive<UserFilters>({
   keyword: '',
@@ -134,68 +148,45 @@ const activeFilters = reactive<UserFilters>({
 
 const pagination = reactive({
   pageNo: 1,
-  pageSize: 17
+  pageSize: 15
 })
 
 const dialogVisible = ref(false)
 const dialogMode = ref<DialogMode>('create')
 const userFormRef = ref<FormInstance>()
+const saveLoading = ref(false)
 const userForm = reactive<UserForm>({
   realName: '',
   username: '',
   password: '',
-  role: 'DISPATCHER'
+  role: 'DISPATCHER',
+  status: 'ENABLED'
 })
-
-const sourceUsers = ref<UserRecord[]>(
-  Array.from({ length: 72 }, (_, index) => {
-    const baseRows: Array<Omit<UserRecord, 'id' | 'createdAt'>> = [
-      { realName: '超级管理员', username: 'admin', role: 'ADMIN' },
-      { realName: '调度主管', username: 'dispatcher01', role: 'DISPATCHER' },
-      { realName: '调度A', username: 'dispatcher02', role: 'DISPATCHER' },
-      { realName: '林设计', username: 'designer01', role: 'DESIGNER' },
-      { realName: '陈设计', username: 'designer02', role: 'DESIGNER' },
-      { realName: '周设计', username: 'designer03', role: 'DESIGNER' }
-    ]
-    const base = baseRows[index % baseRows.length]
-    const suffix = index < 6 ? '' : String(index)
-
-    return {
-      ...base,
-      id: index + 1,
-      realName: `${base.realName}${suffix}`,
-      createdAt: `2026-04-${String(index + 1).padStart(2, '0')} 09:00:00`
-    }
-  })
-)
+const users = ref<UserVO[]>([])
+const userTotal = ref(0)
+const tableLoading = ref(false)
+const currentUser = ref(getStoredUser())
 
 const dialogTitle = computed(() => (dialogMode.value === 'edit' ? '编辑用户' : '新增用户'))
-
-const filteredUsers = computed(() => {
-  const keyword = activeFilters.keyword.trim().toLowerCase()
-
-  return sourceUsers.value.filter(item => {
-    const matchKeyword = !keyword || item.realName.toLowerCase().includes(keyword) || item.username.toLowerCase().includes(keyword)
-    const matchRole = !activeFilters.role || item.role === activeFilters.role
-
-    return matchKeyword && matchRole
-  })
-})
-
-const pagedUsers = computed(() => {
-  const start = (pagination.pageNo - 1) * pagination.pageSize
-
-  return filteredUsers.value.slice(start, start + pagination.pageSize)
-})
+const isEditingCurrentUser = computed(() => dialogMode.value === 'edit' && Boolean(userForm.id && currentUser.value?.id === userForm.id))
+const isRoleLocked = computed(() => isEditingCurrentUser.value || userForm.role === 'ADMIN')
 
 const requiredRule = (message: string) => [{ required: true, whitespace: true, message, trigger: 'blur' }]
+const passwordRules = [
+  { required: true, whitespace: true, message: '请输入登录密码', trigger: 'blur' },
+  { min: 6, message: '登录密码不能少于6位字符', trigger: 'blur' }
+]
 
-const userRules = computed<FormRules<UserForm>>(() => ({
-  realName: requiredRule('请输入用户名'),
-  username: requiredRule('请输入登录账号'),
-  password: requiredRule('请输入登录密码'),
-  role: [{ required: true, message: '请选择当前角色', trigger: 'change' }]
-}))
+const userRules = computed<FormRules<UserForm>>(() => {
+  const rules: FormRules<UserForm> = {
+    realName: requiredRule('请输入用户名'),
+    username: requiredRule('请输入登录账号'),
+    password: passwordRules,
+    role: [{ required: true, message: '请选择当前角色', trigger: 'change' }]
+  }
+
+  return rules
+})
 
 const resetUserForm = () => {
   userForm.id = undefined
@@ -203,34 +194,80 @@ const resetUserForm = () => {
   userForm.username = ''
   userForm.password = ''
   userForm.role = 'DISPATCHER'
+  userForm.status = 'ENABLED'
+}
+
+const fetchUserList = async () => {
+  tableLoading.value = true
+
+  try {
+    const result = await getUserListApi({
+      pageNo: pagination.pageNo,
+      pageSize: pagination.pageSize,
+      keyword: activeFilters.keyword.trim() || undefined,
+      role: activeFilters.role === 'ADMIN' ? undefined : activeFilters.role || undefined
+    })
+
+    users.value = result.records
+    userTotal.value = result.total
+
+    const maxPageNo = Math.max(1, Math.ceil(result.total / pagination.pageSize))
+    if (pagination.pageNo > maxPageNo) {
+      pagination.pageNo = maxPageNo
+    }
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '查询用户列表失败'))
+  } finally {
+    tableLoading.value = false
+  }
 }
 
 const handleSearch = () => {
   activeFilters.keyword = filters.keyword
   activeFilters.role = filters.role
   pagination.pageNo = 1
+  void fetchUserList()
+}
+
+const handlePageChange = (pageNo: number) => {
+  pagination.pageNo = pageNo
+  void fetchUserList()
+}
+
+const handlePageSizeChange = (pageSize: number) => {
+  pagination.pageSize = pageSize
+  pagination.pageNo = 1
+  void fetchUserList()
 }
 
 const openCreateDialog = () => {
   dialogMode.value = 'create'
   resetUserForm()
   dialogVisible.value = true
-  userFormRef.value?.clearValidate()
+  void nextTick(() => {
+    resetUserForm()
+    userFormRef.value?.clearValidate()
+    window.requestAnimationFrame(() => {
+      resetUserForm()
+      userFormRef.value?.clearValidate()
+    })
+  })
 }
 
-const openEditDialog = (row: UserRecord) => {
+const openEditDialog = (row: UserVO) => {
   dialogMode.value = 'edit'
   userForm.id = row.id
   userForm.realName = row.realName
   userForm.username = row.username
   userForm.password = ''
   userForm.role = row.role
+  userForm.status = row.status
   dialogVisible.value = true
-  userFormRef.value?.clearValidate()
+  void nextTick(() => userFormRef.value?.clearValidate())
 }
 
 const handleSaveUser = async () => {
-  if (!userFormRef.value) return
+  if (!userFormRef.value || saveLoading.value) return
 
   try {
     await userFormRef.value.validate()
@@ -238,35 +275,55 @@ const handleSaveUser = async () => {
     return
   }
 
-  if (dialogMode.value === 'edit' && userForm.id) {
-    sourceUsers.value = sourceUsers.value.map(item =>
-      item.id === userForm.id
-        ? {
-            ...item,
-            realName: userForm.realName,
-            username: userForm.username,
-            role: userForm.role
-          }
-        : item
-    )
-  } else {
-    sourceUsers.value = [
-      {
-        id: Date.now(),
-        realName: userForm.realName,
-        username: userForm.username,
-        role: userForm.role,
-        createdAt: '2026-04-27 09:00:00'
-      },
-      ...sourceUsers.value
-    ]
-  }
+  saveLoading.value = true
 
-  dialogVisible.value = false
-  ElMessage.success('保存成功')
+  try {
+    if (dialogMode.value === 'edit' && userForm.id) {
+      const updatePayload = {
+        realName: userForm.realName.trim(),
+        username: userForm.username.trim(),
+        role: userForm.role,
+        status: 'ENABLED' as const,
+        newPassword: userForm.password
+      }
+
+      await updateUserApi(userForm.id, updatePayload)
+
+      if (isEditingCurrentUser.value && currentUser.value) {
+        const nextUser = {
+          ...currentUser.value,
+          realName: userForm.realName.trim()
+        }
+
+        setStoredUser(nextUser)
+        currentUser.value = nextUser
+      }
+
+      ElMessage.success('编辑账号成功')
+    } else {
+      if (userForm.role === 'ADMIN') {
+        throw new RequestError('接口不支持创建超级管理员账号', 400)
+      }
+
+      await createUserApi({
+        username: userForm.username.trim(),
+        password: userForm.password,
+        realName: userForm.realName.trim(),
+        role: userForm.role
+      })
+      ElMessage.success('创建账号成功')
+    }
+
+    dialogVisible.value = false
+    await fetchUserList()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '保存用户失败'))
+  } finally {
+    saveLoading.value = false
+  }
 }
 
-const handleDeleteUser = async (row: UserRecord) => {
+const handleDeleteUser = async (row: UserVO) => {
   try {
     await ElMessageBox.confirm(`确定删除账号“${row.username}”吗？删除后不可恢复。`, '删除确认', {
       confirmButtonText: '删除',
@@ -278,14 +335,25 @@ const handleDeleteUser = async (row: UserRecord) => {
     return
   }
 
-  sourceUsers.value = sourceUsers.value.filter(item => item.id !== row.id)
+  try {
+    await deleteUserApi(row.id)
 
-  if (pagedUsers.value.length === 0 && pagination.pageNo > 1) {
-    pagination.pageNo -= 1
+    if (users.value.length === 1 && pagination.pageNo > 1) {
+      pagination.pageNo -= 1
+      await fetchUserList()
+    } else {
+      await fetchUserList()
+    }
+
+    ElMessage.success('删除成功')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '删除用户失败'))
   }
-
-  ElMessage.success('删除成功')
 }
+
+onMounted(() => {
+  void fetchUserList()
+})
 </script>
 
 <style scoped lang="scss">
@@ -342,8 +410,6 @@ const handleDeleteUser = async (row: UserRecord) => {
   align-content: center;
   padding: 0 22px;
   margin: 0;
-  background: #f8fbff;
-  border-bottom: 1px solid #e1e9f5;
 
   :deep(.el-form-item) {
     margin: 0;
@@ -440,40 +506,8 @@ const handleDeleteUser = async (row: UserRecord) => {
   align-items: center;
   justify-content: center;
 
-  :deep(.el-pagination) {
-    --el-pagination-font-size: 14px;
-    color: #6d7f9a;
-    font-weight: 500;
-  }
-
   :deep(.el-pager) {
     gap: 6px;
-  }
-
-  :deep(.el-pagination button),
-  :deep(.el-pager li) {
-    min-width: 32px;
-    height: 32px;
-    border: 1px solid #d8e5f8;
-    border-radius: 8px;
-  }
-
-  :deep(.el-pagination button:disabled) {
-    background: #fff;
-  }
-
-  :deep(.el-pager li.is-active) {
-    color: #fff;
-    background: #2563eb;
-    border-color: #2563eb;
-  }
-
-  :deep(.el-pagination__jump) {
-    margin-left: 18px;
-  }
-
-  :deep(.el-pagination__editor.el-input) {
-    width: 48px;
   }
 }
 

@@ -42,6 +42,9 @@ export class RequestError extends Error {
 }
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+const SUCCESS_CODE = 200
+const LOGIN_EXPIRED_CODE = 301
+const LOGIN_PATH = '/'
 
 const service: AxiosInstance = axios.create({
   baseURL,
@@ -55,6 +58,14 @@ let refreshTask: Promise<void> | null = null
 
 const isRefreshRequest = (config?: AxiosRequestConfig) => {
   return Boolean(config?.url?.includes('/auth/refresh'))
+}
+
+const redirectToLogin = () => {
+  clearAuthStorage()
+
+  if (typeof window !== 'undefined' && window.location.pathname !== LOGIN_PATH) {
+    window.location.replace(LOGIN_PATH)
+  }
 }
 
 const normalizeErrorMessage = (error: AxiosError<ApiResult>) => {
@@ -86,7 +97,7 @@ const refreshAccessToken = async () => {
     { timeout: 15000 },
   )
 
-  if (response.data.code !== 0) {
+  if (response.data.code !== SUCCESS_CODE) {
     throw new RequestError(response.data.message || '刷新登录状态失败', response.data.code, response.status, response.data)
   }
 
@@ -120,7 +131,12 @@ service.interceptors.response.use(
 
     const result = response.data as ApiResult
 
-    if (result?.code !== 0) {
+    if (result?.code === LOGIN_EXPIRED_CODE) {
+      redirectToLogin()
+      throw new RequestError(result?.message || '登录已过期，请重新登录', LOGIN_EXPIRED_CODE, response.status, result)
+    }
+
+    if (result?.code !== SUCCESS_CODE) {
       throw new RequestError(result?.message || '接口请求失败', result?.code ?? response.status, response.status, result)
     }
 
@@ -148,7 +164,9 @@ service.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
+    if (error.response?.data?.code === LOGIN_EXPIRED_CODE) {
+      redirectToLogin()
+    } else if (error.response?.status === 401) {
       clearAuthStorage()
     }
 

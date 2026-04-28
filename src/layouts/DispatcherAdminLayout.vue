@@ -55,28 +55,31 @@
         </el-form-item>
 
         <el-form-item label="登录账号" prop="username">
-          <el-input v-model="accountForm.username" placeholder="请输入登录账号" />
+          <el-input v-model="accountForm.username" autocomplete="off" disabled name="account-settings-username" placeholder="请输入登录账号" />
         </el-form-item>
 
         <el-form-item label="登录密码" prop="password">
-          <el-input v-model="accountForm.password" placeholder="请输入登录密码" show-password type="password" />
+          <el-input v-model="accountForm.password" autocomplete="new-password" name="account-settings-new-password" placeholder="请输入登录密码" show-password type="password" />
         </el-form-item>
       </el-form>
 
       <template #footer>
         <el-button @click="accountDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveAccount">保存修改</el-button>
+        <el-button type="primary" @click="handleSaveAccount">提交</el-button>
       </template>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Grid, User } from '@element-plus/icons-vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
+import { logoutApi } from '../api/auth'
+import { updateUserApi } from '../api/users'
+import { RequestError } from '../libs/request'
 import { clearAuthStorage, getStoredUser, setStoredUser } from '../libs/request/auth'
 import type { StoredUser } from '../libs/request/auth'
 
@@ -110,16 +113,20 @@ const accountForm = reactive<AccountForm>({
 
 const roleNameMap = {
   DISPATCHER: '调度主管',
-  ADMIN: '超级管理'
+  ADMIN: '超级管理员'
 } as const
 
 const requiredRule = (message: string) => [{ required: true, whitespace: true, message, trigger: 'blur' }]
+const passwordRules = [
+  { required: true, whitespace: true, message: '请输入登录密码', trigger: 'blur' },
+  { min: 6, message: '登录密码不能少于6位字符', trigger: 'blur' }
+]
 
 const accountRules = reactive<FormRules<AccountForm>>({
   realName: requiredRule('请输入用户名'),
   roleName: requiredRule('请输入当前角色'),
   username: requiredRule('请输入登录账号'),
-  password: requiredRule('请输入登录密码')
+  password: passwordRules
 })
 
 const menus: MenuItem[] = [
@@ -133,15 +140,23 @@ const userName = computed(() => storedUser.value?.realName || storedUser.value?.
 // const visibleMenus = computed(() => menus.filter(item => item.roles.includes(userRole.value)))
 const visibleMenus = computed(() => menus)
 
+const getErrorMessage = (error: unknown, fallback: string) => (error instanceof RequestError ? error.message : fallback)
+
 const isActive = (path: string) => route.path === path || route.path.startsWith(`${path}/`)
 
 const goHome = () => {
   router.push('/orders')
 }
 
-const handleLogout = () => {
-  clearAuthStorage()
-  router.replace({ name: 'Login' })
+const handleLogout = async () => {
+  try {
+    await logoutApi()
+  } catch {
+    // 退出登录必须以本地状态清理为准，接口失败也不能保留旧 token。
+  } finally {
+    clearAuthStorage()
+    router.replace({ name: 'Login' })
+  }
 }
 
 const handleUserCommand = (command: string | number | object) => {
@@ -161,7 +176,14 @@ const openAccountDialog = () => {
   accountForm.username = storedUser.value?.username || ''
   accountForm.password = ''
   accountDialogVisible.value = true
-  accountFormRef.value?.clearValidate()
+  void nextTick(() => {
+    accountForm.password = ''
+    accountFormRef.value?.clearValidate()
+    window.requestAnimationFrame(() => {
+      accountForm.password = ''
+      accountFormRef.value?.clearValidate()
+    })
+  })
 }
 
 const handleSaveAccount = async () => {
@@ -178,16 +200,27 @@ const handleSaveAccount = async () => {
     return
   }
 
-  const nextUser = {
-    ...storedUser.value,
-    realName: accountForm.realName,
-    username: accountForm.username
-  }
+  try {
+    await updateUserApi(storedUser.value.id, {
+      realName: accountForm.realName.trim(),
+      username: storedUser.value.username,
+      role: storedUser.value.role,
+      status: 'ENABLED',
+      newPassword: accountForm.password
+    })
 
-  setStoredUser(nextUser)
-  storedUser.value = nextUser
-  accountDialogVisible.value = false
-  ElMessage.success('保存成功')
+    const nextUser = {
+      ...storedUser.value,
+      realName: accountForm.realName.trim()
+    }
+
+    setStoredUser(nextUser)
+    storedUser.value = nextUser
+    accountDialogVisible.value = false
+    ElMessage.success('保存成功')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '保存个人设置失败'))
+  }
 }
 </script>
 

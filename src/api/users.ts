@@ -18,9 +18,11 @@ export interface CreateUserParams {
 
 export interface UpdateUserParams {
   realName: string
-  role: Exclude<UserRole, 'ADMIN'>
+  username: string
+  role: UserRole
   phone?: string
   status: UserStatus
+  newPassword: string
 }
 
 export interface ResetUserPasswordParams {
@@ -33,7 +35,7 @@ export const getUserListApi = (params?: UserListParams) =>
     url: '/users',
     method: 'GET',
     params,
-  })
+  }) as unknown as Promise<PageResponse<UserVO>>
 
 /** 创建设计师或调度账号，仅超级管理员可访问。 */
 export const createUserApi = (data: CreateUserParams) =>
@@ -41,22 +43,25 @@ export const createUserApi = (data: CreateUserParams) =>
     url: '/users',
     method: 'POST',
     data,
-  })
+  }) as unknown as Promise<UserVO>
 
 /** 编辑账号基础信息，仅超级管理员可访问。 */
 export const updateUserApi = (id: number, data: UpdateUserParams) =>
   request<UserVO>({
     url: `/users/${id}`,
     method: 'PUT',
+    params: {
+      user_id: id,
+    },
     data,
-  })
+  }) as unknown as Promise<UserVO>
 
 /** 删除指定账号，仅超级管理员可访问。 */
 export const deleteUserApi = (id: number) =>
   request<boolean>({
     url: `/users/${id}`,
     method: 'DELETE',
-  })
+  }) as unknown as Promise<boolean>
 
 /** 重置指定账号密码，仅超级管理员可访问。 */
 export const resetUserPasswordApi = (id: number, data: ResetUserPasswordParams) =>
@@ -64,5 +69,4 @@ export const resetUserPasswordApi = (id: number, data: ResetUserPasswordParams) 
     url: `/users/${id}/password`,
     method: 'PUT',
     data,
-  })
-
+  }) as unknown as Promise<boolean>
