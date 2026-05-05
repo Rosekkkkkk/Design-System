@@ -21,6 +21,8 @@
               </div>
             </template>
           </el-table-column>
+          <el-table-column label="预充值金额" prop="prepaidAmount" />
+          <el-table-column label="剩余金额" prop="remainingAmount" />
           <el-table-column label="创建时间" prop="createdAt" />
           <el-table-column class-name="operation-column-cell" fixed="right" label="操作" width="208">
             <template #default="{ row }: { row: MerchantRecord }">
@@ -62,9 +64,30 @@
       <el-form ref="merchantFormRef" class="merchant-editor-form" :disabled="isReadOnlyMode" :model="merchantForm" :rules="merchantRules" label-width="96px">
         <section class="merchant-basic-card">
           <div class="basic-title">基础信息</div>
-          <el-form-item label="商户名称" prop="merchantName">
-            <el-input v-model.trim="merchantForm.merchantName" placeholder="请输入商户名称" />
-          </el-form-item>
+          <div class="basic-content">
+            <el-col :span="11">
+              <el-form-item label="商户名称" prop="merchantName">
+                <el-input v-model.trim="merchantForm.merchantName" placeholder="请输入商户名称" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="11">
+              <el-form-item label="预充值金额">
+                <el-input-number
+                  controls-position="right"
+                  v-model="merchantForm.prepaidAmount"
+                  :min="0"
+                  :precision="PRICE_DECIMAL_PLACES"
+                  :step="1"
+                  disabled-scientific
+                  inputmode="decimal"
+                  placeholder="请输入预充值金额"
+                  @change="merchantForm.prepaidAmount = normalizePriceNumber($event)"
+                  @input.capture="enforcePriceInput"
+                  @paste.capture="preventInvalidPricePaste"
+                />
+              </el-form-item>
+            </el-col>
+          </div>
         </section>
 
         <section class="form-section">
@@ -192,7 +215,7 @@ const filters = reactive<MasterDataFilters>({
   merchantName: '',
 })
 
-const requiredRule = (message: string, trigger: 'blur' | 'change' = 'blur'): FormItemRule[] => [{ required: true, whitespace: true, message, trigger }]
+const requiredRule = (message: string, trigger: 'blur' | 'change' = 'blur'): FormItemRule[] => [{ required: true,message, trigger }]
 
 const merchantRules: FormRules<MerchantDialogForm> = {
   merchantName: requiredRule('请输入商户名称'),
@@ -221,6 +244,7 @@ const createPhotoType = (source: PhotoTypeSource = {}): MerchantPhotoType => ({
 const createEmptyForm = (): MerchantDialogForm => ({
   merchantName: '',
   photoTypes: [],
+  prepaidAmount: undefined,
 })
 
 const normalizeMerchantRecord = (record: MerchantMasterRecordVO | MerchantMasterEditableVO, fallbackId: MerchantId = createId('merchant')): MerchantRecord => {
@@ -228,6 +252,8 @@ const normalizeMerchantRecord = (record: MerchantMasterRecordVO | MerchantMaster
     id: record.id ?? fallbackId,
     merchantName: record.merchantName ?? '',
     photoTypes: (record.photoTypes ?? []).map(item => createPhotoType(item)),
+    prepaidAmount: normalizePriceNumber(record.prepaidAmount),
+    remainingAmount: normalizePriceNumber(record.remainingAmount),
     createdAt: record.createdAt ?? '',
   }
 }
@@ -235,6 +261,7 @@ const normalizeMerchantRecord = (record: MerchantMasterRecordVO | MerchantMaster
 const cloneRecordToForm = (record: MerchantRecord): MerchantDialogForm => ({
   merchantName: record.merchantName,
   photoTypes: record.photoTypes.map(item => ({ ...item })),
+  prepaidAmount: record.prepaidAmount,
 })
 
 const merchantForm = reactive<MerchantDialogForm>(createEmptyForm())
@@ -253,6 +280,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const assignMerchantForm = (nextForm: MerchantDialogForm) => {
   merchantForm.merchantName = nextForm.merchantName
   merchantForm.photoTypes = nextForm.photoTypes
+  merchantForm.prepaidAmount = nextForm.prepaidAmount
 }
 
 const loadMerchants = async () => {
@@ -357,6 +385,7 @@ const buildMerchantPayload = () => ({
       defaultDispatchPrice: dispatchPrice,
     }
   }),
+  prepaidAmount: toPricePayload(merchantForm.prepaidAmount),
 })
 
 const submitMerchantForm = async () => {
@@ -649,6 +678,12 @@ onMounted(() => {
     color: #001b44;
     font-size: 15px;
     font-weight: 900;
+  }
+
+  .basic-content {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
   }
 
   .form-section {

@@ -108,7 +108,6 @@
         ref="createOrderRef"
         class="create-order-dialog-content"
         :mode="orderDialogMode"
-        :import-preview="createOrderImportPreview"
         :initial-form="createOrderInitialForm"
         :merchant-options="merchantOptions"
         @confirm="handleCreateOrderConfirm"
@@ -118,6 +117,23 @@
       <template #footer>
         <el-button @click="isCreateOrderDialogVisible = false">取消</el-button>
         <el-button type="primary" :disabled="isCreateOrderSubmitDisabled" @click="createOrderRef?.submit()">{{ orderDialogConfirmText }}</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="isImportOrderDialogVisible" title="导入订单" class="create-order-dialog" width="1400px" destroy-on-close>
+      <CreateOrder
+        ref="importOrderRef"
+        class="create-order-dialog-content"
+        mode="import"
+        :import-preview="createOrderImportPreview"
+        :merchant-options="merchantOptions"
+        @confirm="handleCreateOrderConfirm"
+        @submit-disabled-change="isImportOrderSubmitDisabled = $event"
+      />
+
+      <template #footer>
+        <el-button @click="isImportOrderDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="isImportOrderSubmitDisabled" @click="importOrderRef?.submit()">确认导入</el-button>
       </template>
     </el-dialog>
 
@@ -212,8 +228,10 @@ const isImporting = ref(false)
 const tableMode = ref<AllOrdersTableMode>('detail')
 const tableRenderKey = ref(0)
 const isCreateOrderDialogVisible = ref(false)
+const isImportOrderDialogVisible = ref(false)
 const dispatchDialogVisible = ref(false)
 const createOrderRef = ref<InstanceType<typeof CreateOrder>>()
+const importOrderRef = ref<InstanceType<typeof CreateOrder>>()
 const importFileInput = ref<HTMLInputElement>()
 const orderDialogMode = ref<OrderDialogMode>('create')
 const dispatchDialogMode = ref<DispatchDialogMode>('dispatch')
@@ -227,6 +245,7 @@ const dispatchConfirmText = computed(() => (dispatchDialogMode.value === 'reassi
 const tableModeSwitchOptions = computed(() => createTableModeSwitchOptions(tableMode.value))
 const selectedRows = computed(() => (tableMode.value === 'detail' ? selectedDetailRows.value : selectedSummaryRows.value))
 const isCreateOrderSubmitDisabled = ref(false)
+const isImportOrderSubmitDisabled = ref(false)
 
 const getEmptyCreateOrderForm = (): CreateOrderForm => ({
   id: undefined,
@@ -484,6 +503,7 @@ const handleCreateOrderConfirm = async (form: CreateOrderForm | CreateOrderBatch
     }
 
     isCreateOrderDialogVisible.value = false
+    isImportOrderDialogVisible.value = false
     await loadCurrentTable()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '订单保存失败'))
@@ -670,11 +690,9 @@ const handleImportFileChange = async (event: Event) => {
 
   try {
     const preview = await previewAdminOrdersImportApi(file)
-    orderDialogMode.value = 'create'
-    createOrderInitialForm.value = getEmptyCreateOrderForm()
     createOrderImportPreview.value = preview
-    isCreateOrderSubmitDisabled.value = !preview.valid || preview.errors.length > 0
-    isCreateOrderDialogVisible.value = true
+    isImportOrderSubmitDisabled.value = !preview.valid || preview.errors.length > 0
+    isImportOrderDialogVisible.value = true
 
     if (!preview.valid || preview.errors.length > 0) {
       ElMessage.warning('导入数据存在错误，请修改 Excel 后重新上传。')

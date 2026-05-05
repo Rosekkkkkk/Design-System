@@ -1,6 +1,6 @@
 const ACCESS_TOKEN_KEY = 'design_dispatch_access_token'
 const REFRESH_TOKEN_KEY = 'design_dispatch_refresh_token'
-const USER_KEY = 'design_dispatch_user'
+export const USER_KEY = 'design_dispatch_user'
 
 export interface StoredUser {
   id: number

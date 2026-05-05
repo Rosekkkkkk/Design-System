@@ -5,7 +5,7 @@
         <el-icon class="brand-mark" aria-hidden="true">
           <Grid />
         </el-icon>
-        <span class="brand-title">管理系统</span>
+        <span class="brand-title">Achelisi订单管理系统</span>
       </div>
 
       <div class="user-area">
@@ -36,7 +36,7 @@
     <el-dialog v-model="accountDialogVisible" class="account-settings-dialog" title="个人设置" width="480px" :show-close="false" destroy-on-close>
       <el-form ref="accountFormRef" class="account-settings-form" :model="accountForm" :rules="accountRules" label-position="left">
         <el-form-item label="用户名" prop="realName">
-          <el-input v-model="accountForm.realName" placeholder="请输入用户名" />
+          <el-input v-model="accountForm.realName" placeholder="请输入用户名" :disabled="true" />
         </el-form-item>
 
         <el-form-item label="当前角色" prop="roleName">

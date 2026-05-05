@@ -5,7 +5,7 @@
         <el-icon class="brand-mark" aria-hidden="true">
           <Grid />
         </el-icon>
-        <span class="brand-title">管理系统</span>
+        <span class="brand-title">Achelisi订单管理系统</span>
       </div>
 
       <div class="user-area">

@@ -21,6 +21,8 @@ export interface MerchantMasterRecordVO {
   id: MerchantId
   merchantName: string
   photoTypes?: MerchantMasterPhotoTypeVO[]
+  prepaidAmount?: string | number
+  remainingAmount?: string | number
   createdAt?: string
 }
 
@@ -28,6 +30,8 @@ export interface MerchantMasterEditableVO {
   id?: MerchantId
   merchantName: string
   photoTypes?: MerchantMasterPhotoTypeVO[]
+  prepaidAmount?: string | number
+  remainingAmount?: string | number
   createdAt?: string
 }
 
@@ -35,6 +39,7 @@ export interface SaveMerchantMasterParams {
   id?: MerchantId
   merchantName: string
   photoTypes?: Array<Omit<MerchantMasterPhotoTypeVO, 'id'>>
+  prepaidAmount?: string | number
 }
 
 /** 商户管理页面列表，使用页面级聚合接口。 */

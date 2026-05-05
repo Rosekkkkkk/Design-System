@@ -20,10 +20,13 @@ export interface MerchantRecord {
   id: MerchantId
   merchantName: string
   photoTypes: MerchantPhotoType[]
+  prepaidAmount: number | undefined
+  remainingAmount: number | undefined
   createdAt: string
 }
 
 export interface MerchantDialogForm {
   merchantName: string
   photoTypes: MerchantPhotoType[]
+  prepaidAmount: number | undefined
 }

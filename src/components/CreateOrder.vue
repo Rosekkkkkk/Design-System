@@ -127,7 +127,7 @@
         <el-table-column label="照片张数" width="136">
           <template #default="{ row, $index }: { row: BatchOrderRow; $index: number }">
             <el-form-item :class="getFieldClass($index, 'photoCount')" :prop="`rows.${$index}.photoCount`" :rules="requiredRule('请输入照片张数')">
-              <el-input-number v-model="row.photoCount" controls-position="right" :min="1" :precision="0" :step="1" />
+              <el-input-number v-model="row.photoCount" controls-position="right" :min="isImportMode ? undefined : 1" :precision="0" :step="1" />
               <div v-for="error in getFieldErrors($index, 'photoCount')" :key="error" class="field-error-tip">{{ error }}</div>
             </el-form-item>
           </template>
@@ -139,14 +139,14 @@
               <el-input-number
                 v-model="row.acceptUnitPrice"
                 controls-position="right"
-                :min="0"
+                :min="isImportMode ? undefined : 0"
                 :precision="PRICE_DECIMAL_PLACES"
                 :step="1"
                 disabled-scientific
                 inputmode="decimal"
                 @change="row.acceptUnitPrice = normalizePriceNumber($event)"
-                @input.capture="enforcePriceInput"
-                @paste.capture="preventInvalidPricePaste"
+                @input.capture="!isImportMode && enforcePriceInput($event)"
+                @paste.capture="!isImportMode || preventInvalidPricePaste($event)"
               />
               <div v-for="error in getFieldErrors($index, 'acceptUnitPrice')" :key="error" class="field-error-tip">{{ error }}</div>
             </el-form-item>
@@ -159,14 +159,14 @@
               <el-input-number
                 v-model="row.dispatchUnitPrice"
                 controls-position="right"
-                :min="0"
+                :min="isImportMode ? undefined : 0"
                 :precision="PRICE_DECIMAL_PLACES"
                 :step="1"
                 disabled-scientific
                 inputmode="decimal"
                 @change="row.dispatchUnitPrice = normalizePriceNumber($event)"
-                @input.capture="enforcePriceInput"
-                @paste.capture="preventInvalidPricePaste"
+                @input.capture="!isImportMode && enforcePriceInput($event)"
+                @paste.capture="!isImportMode || preventInvalidPricePaste($event)"
               />
               <div v-for="error in getFieldErrors($index, 'dispatchUnitPrice')" :key="error" class="field-error-tip">{{ error }}</div>
             </el-form-item>
@@ -175,7 +175,7 @@
 
         <el-table-column label="订单号" min-width="180">
           <template #default="{ row, $index }: { row: BatchOrderRow; $index: number }">
-            <el-form-item :class="getFieldClass($index, 'orderNo')" :prop="`rows.${$index}.orderNo`" :rules="textRequiredRule('请输入订单号')">
+            <el-form-item :class="getFieldClass($index, 'orderNo')" :prop="`rows.${$index}.orderNo`">
               <el-input v-model.trim="row.orderNo" />
               <div v-for="error in getFieldErrors($index, 'orderNo')" :key="error" class="field-error-tip">{{ error }}</div>
             </el-form-item>
@@ -227,10 +227,10 @@ import type {
   CreateOrderMerchantOption,
 } from '../types/CreateOrder'
 import type { OrderId } from '../types/AllOrders'
-import { getPopconfirmWidth } from '../utils/popconfirmWidth'
 import { enforcePriceInput, normalizePriceNumber, PRICE_DECIMAL_PLACES, preventInvalidPricePaste } from '../utils/price'
+import dayjs from 'dayjs'
 
-type CreateOrderMode = 'create' | 'edit'
+type CreateOrderMode = 'create' | 'edit' | 'import'
 type BatchOrderRow = CreateOrderBatchRow
 
 interface PhotoTypeOption {
@@ -264,8 +264,11 @@ const importBlockingMessage = ref('')
 const lastBatchPhotoType = ref('')
 
 const isEditMode = computed(() => props.mode === 'edit')
+const isImportMode = computed(() => props.mode === 'import')
 
 const createRowKey = () => `row-${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+const formatCurrentDateTime = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
 const getEmptySingleForm = (): CreateOrderForm => ({
   merchantName: '',
@@ -292,7 +295,7 @@ const createBatchRow = (source: Partial<CreateOrderBatchRow> = {}): BatchOrderRo
   acceptUnitPrice: normalizePriceNumber(source.acceptUnitPrice),
   dispatchUnitPrice: normalizePriceNumber(source.dispatchUnitPrice),
   orderNo: source.orderNo ?? '',
-  orderedAt: source.orderedAt ?? '',
+  orderedAt: source.orderedAt || formatCurrentDateTime(),
   remark: source.remark ?? '',
 })
 
@@ -318,7 +321,6 @@ const singleRules = reactive<FormRules<CreateOrderForm>>({
   photoCount: requiredRule('请输入照片张数'),
   acceptUnitPrice: requiredRule('请输入接单价'),
   dispatchUnitPrice: requiredRule('请输入派单价'),
-  orderNo: textRequiredRule('请输入订单号'),
   orderedAt: requiredRule('请输入下单时间'),
 })
 
