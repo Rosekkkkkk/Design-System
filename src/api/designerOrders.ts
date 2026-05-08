@@ -44,6 +44,10 @@ export interface CompleteDesignerOrderParams {
   id: number | string
 }
 
+export interface CompleteDesignerOrdersBatchParams {
+  ids: Array<number | string>
+}
+
 export const getDesignerOrderListApi = (data: DesignerOrderPageQuery) =>
   request<PageResponse<DesignerOrderRecordVO>>({
     url: '/designer/orders/list',
@@ -57,6 +61,13 @@ export const completeDesignerOrderApi = (data: CompleteDesignerOrderParams) =>
     method: 'POST',
     data,
   }) as unknown as Promise<DesignerOrderRecordVO | boolean>
+
+export const completeDesignerOrdersBatchApi = (data: CompleteDesignerOrdersBatchParams) =>
+  request<boolean>({
+    url: '/designer/orders/complete/batch',
+    method: 'POST',
+    data,
+  }) as unknown as Promise<boolean>
 
 export const getDesignerOrderShopGroupsApi = () =>
   request<DesignerOrderGroupVO[]>({

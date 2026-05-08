@@ -108,6 +108,14 @@ export interface DispatchOrderParams {
   designerId: OrderId
 }
 
+export interface BatchIdsParams {
+  ids: OrderId[]
+}
+
+export interface BatchDispatchOrderParams extends BatchIdsParams {
+  designerId: OrderId
+}
+
 export interface ExportSelectedOrdersParams {
   tableType: 'DETAIL' | 'SUMMARY'
   ids: OrderId[]
@@ -222,12 +230,26 @@ export const dispatchAdminOrderApi = (data: DispatchOrderParams) =>
     data,
   }) as unknown as Promise<AdminOrderRecordVO | boolean>
 
+export const dispatchAdminOrdersBatchApi = (data: BatchDispatchOrderParams) =>
+  request<boolean>({
+    url: '/admin/orders/dispatch/batch',
+    method: 'POST',
+    data,
+  }) as unknown as Promise<boolean>
+
 export const approveAdminOrderApi = (id: OrderId) =>
   request<AdminOrderRecordVO | boolean>({
     url: '/admin/orders/approve',
     method: 'POST',
     data: { id },
   }) as unknown as Promise<AdminOrderRecordVO | boolean>
+
+export const approveAdminOrdersBatchApi = (data: BatchIdsParams) =>
+  request<boolean>({
+    url: '/admin/orders/approve/batch',
+    method: 'POST',
+    data,
+  }) as unknown as Promise<boolean>
 
 export const rejectAdminOrderApi = (id: OrderId) =>
   request<AdminOrderRecordVO | boolean>({

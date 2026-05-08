@@ -5,64 +5,76 @@
     </header>
 
     <el-form class="orders-filter" :model="filters" inline>
-      <el-form-item>
-        <el-select v-model="filters.merchants" multiple collapse-tags placeholder="商户多选">
-          <el-option v-for="item in merchantOptions" :key="item.id" :label="item.name" :value="item.id" />
-        </el-select>
-      </el-form-item>
+      <div class="orders-filter-row orders-filter-row--fields">
+        <el-form-item>
+          <el-select v-model="filters.merchants" multiple collapse-tags placeholder="商户多选">
+            <el-option v-for="item in merchantOptions" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+        </el-form-item>
 
-      <el-form-item>
-        <el-select v-model="filters.photoTypes" multiple collapse-tags placeholder="照片种类多选">
-          <el-option v-for="item in photoTypeOptions" :key="item" :label="item" :value="item" />
-        </el-select>
-      </el-form-item>
+        <el-form-item>
+          <el-select v-model="filters.photoTypes" multiple collapse-tags placeholder="照片种类多选">
+            <el-option v-for="item in photoTypeOptions" :key="item" :label="item" :value="item" />
+          </el-select>
+        </el-form-item>
 
-      <el-form-item>
-        <el-select v-model="filters.statuses" multiple collapse-tags placeholder="订单状态多选">
-          <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-form-item>
+        <el-form-item>
+          <el-select v-model="filters.statuses" multiple collapse-tags placeholder="订单状态多选">
+            <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
 
-      <el-form-item>
-        <el-select v-model="filters.designers" multiple collapse-tags placeholder="设计师多选">
-          <el-option v-for="item in designerOptions" :key="item.id" :label="item.name" :value="item.id" />
-        </el-select>
-      </el-form-item>
+        <el-form-item>
+          <el-select v-model="filters.designers" multiple collapse-tags placeholder="设计师多选">
+            <el-option v-for="item in designerOptions" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+        </el-form-item>
 
-      <el-form-item class="date-form-item">
-        <el-date-picker v-model="filters.dateRange" end-placeholder="结束时间" format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="开始时间" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" />
-      </el-form-item>
+        <el-form-item class="date-form-item">
+          <el-date-picker v-model="filters.dateRange" end-placeholder="结束时间" format="YYYY-MM-DD HH:mm:ss" range-separator="-" start-placeholder="开始时间" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" />
+        </el-form-item>
 
-      <el-form-item>
-        <el-input v-model="filters.keyword" placeholder="输入关键词" />
-      </el-form-item>
+        <el-form-item>
+          <el-input v-model="filters.keyword" placeholder="输入关键词" />
+        </el-form-item>
+      </div>
 
-      <el-form-item>
-        <el-button class="query-button" type="primary" plain :icon="Search" @click="searchOrders">查询</el-button>
-      </el-form-item>
+      <div class="orders-filter-row orders-filter-row--actions">
+        <el-form-item>
+          <el-button class="query-button" type="primary" plain :icon="Search" @click="searchOrders">查询</el-button>
+        </el-form-item>
 
-      <el-form-item>
-        <el-button class="create-order-button" type="success" plain :icon="Plus" @click="openCreateOrderDialog">新建订单</el-button>
-      </el-form-item>
+        <el-form-item>
+          <el-button class="create-order-button" type="success" plain :icon="Plus" @click="openCreateOrderDialog">新建订单</el-button>
+        </el-form-item>
 
-      <el-form-item>
-        <el-button class="summary-button" type="success" @click="toggleTableMode">
-          <span v-for="(option, index) in tableModeSwitchOptions" :key="option.mode" class="table-mode-switch-text" :class="{ 'is-active': option.isActive }">
-            <el-icon class="table-mode-switch-icon">
-              <component :is="option.mode === 'detail' ? Document : DataAnalysis" />
-            </el-icon>
-            {{ option.label }}<span v-if="index === 0" class="table-mode-switch-separator">/</span>
-          </span>
-        </el-button>
-      </el-form-item>
+        <el-form-item>
+          <el-button class="summary-button" type="success" @click="toggleTableMode">
+            <span v-for="(option, index) in tableModeSwitchOptions" :key="option.mode" class="table-mode-switch-text" :class="{ 'is-active': option.isActive }">
+              <el-icon class="table-mode-switch-icon">
+                <component :is="option.mode === 'detail' ? Document : DataAnalysis" />
+              </el-icon>
+              {{ option.label }}<span v-if="index === 0" class="table-mode-switch-separator">/</span>
+            </span>
+          </el-button>
+        </el-form-item>
 
-      <el-form-item>
-        <el-button class="import-button" plain :icon="Upload" :loading="isImporting" @click="triggerImport">导入数据</el-button>
-      </el-form-item>
+        <el-form-item>
+          <el-button class="import-button" plain :icon="Upload" :loading="isImporting" @click="triggerImport">导入数据</el-button>
+        </el-form-item>
 
-      <el-form-item>
-        <el-button class="export-button" plain :icon="Download" :disabled="!selectedRows.length || isExporting" :loading="isExporting" @click="exportSelectedRows">导出数据</el-button>
-      </el-form-item>
+        <el-form-item>
+          <el-button class="export-button" plain :icon="Download" :disabled="!selectedRows.length || isExporting" :loading="isExporting" @click="exportSelectedRows">导出数据</el-button>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button class="batch-action-button" type="warning" plain :disabled="isBatchApproveDisabled" :loading="isBatchApproving" @click="approveSelectedOrders">批量审核</el-button>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button class="batch-action-button" type="success" plain :disabled="isBatchDispatchDisabled" @click="openBatchDispatchDialog">批量派单</el-button>
+        </el-form-item>
+      </div>
     </el-form>
     <input ref="importFileInput" class="import-file-input" type="file" accept=".xlsx" @change="handleImportFileChange" />
 
@@ -162,9 +174,11 @@ import AllOrdersDetailTable from '../components/AllOrdersDetailTable.vue'
 import AllOrdersSummaryTable from '../components/AllOrdersSummaryTable.vue'
 import CreateOrder from '../components/CreateOrder.vue'
 import {
+  approveAdminOrdersBatchApi,
   approveAdminOrderApi,
   createAdminOrdersBatchApi,
   deleteAdminOrderApi,
+  dispatchAdminOrdersBatchApi,
   dispatchAdminOrderApi,
   exportSelectedAdminOrdersApi,
   getAdminOrderDesignerGroupsApi,
@@ -188,7 +202,7 @@ import { getAllOrderSelectionKey, getAllOrderSummarySelectionKey, mergePagedSele
 import { normalizePriceNumberOrZero, toPricePayload } from '../utils/price'
 
 type OrderDialogMode = 'create' | 'edit'
-type DispatchDialogMode = 'dispatch' | 'reassign'
+type DispatchDialogMode = 'dispatch' | 'reassign' | 'batchDispatch'
 
 interface SelectOption {
   id: OrderId
@@ -240,12 +254,29 @@ const dispatchDesignerId = ref<OrderId | undefined>()
 const orderDialogTitle = computed(() => (orderDialogMode.value === 'edit' ? '编辑订单' : '新建订单'))
 const orderDialogConfirmText = computed(() => (orderDialogMode.value === 'edit' ? '确认修改' : '确认添加'))
 const orderDialogWidth = computed(() => (orderDialogMode.value === 'edit' ? '860px' : '1400px'))
-const dispatchDialogTitle = computed(() => (dispatchDialogMode.value === 'reassign' ? '改派' : '派单'))
-const dispatchConfirmText = computed(() => (dispatchDialogMode.value === 'reassign' ? '改派' : '派单'))
+const dispatchDialogTitle = computed(() => (
+  dispatchDialogMode.value === 'reassign'
+    ? '改派'
+    : dispatchDialogMode.value === 'batchDispatch'
+      ? '批量派单'
+      : '派单'
+))
+const dispatchConfirmText = computed(() => (
+  dispatchDialogMode.value === 'reassign'
+    ? '改派'
+    : dispatchDialogMode.value === 'batchDispatch'
+      ? '批量派单'
+      : '派单'
+))
 const tableModeSwitchOptions = computed(() => createTableModeSwitchOptions(tableMode.value))
 const selectedRows = computed(() => (tableMode.value === 'detail' ? selectedDetailRows.value : selectedSummaryRows.value))
 const isCreateOrderSubmitDisabled = ref(false)
 const isImportOrderSubmitDisabled = ref(false)
+const isBatchApproving = ref(false)
+const canBatchApproveSelected = computed(() => tableMode.value === 'detail' && selectedDetailRows.value.length > 0)
+const canBatchDispatchSelected = computed(() => tableMode.value === 'detail' && selectedDetailRows.value.length > 0)
+const isBatchApproveDisabled = computed(() => !canBatchApproveSelected.value || isLoading.value)
+const isBatchDispatchDisabled = computed(() => !canBatchDispatchSelected.value || isLoading.value)
 
 const getEmptyCreateOrderForm = (): CreateOrderForm => ({
   id: undefined,
@@ -537,6 +568,7 @@ const changeOrderStatus = async (order: AllOrder, status: string) => {
       status,
     })
     ElMessage.success('状态修改成功')
+    clearDetailSelection()
     await loadCurrentTable()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '状态修改失败'))
@@ -563,6 +595,7 @@ const deleteOrder = async (order: AllOrder) => {
       type: 'success',
       message: '删除成功!',
     })
+    clearDetailSelection()
     await loadCurrentTable()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '订单删除失败'))
@@ -576,6 +609,15 @@ const dispatchOrder = (order: AllOrder) => {
   dispatchDialogVisible.value = true
 }
 
+const openBatchDispatchDialog = () => {
+  if (!canBatchDispatchSelected.value) return
+
+  dispatchDialogMode.value = 'batchDispatch'
+  dispatchTargetOrder.value = null
+  dispatchDesignerId.value = undefined
+  dispatchDialogVisible.value = true
+}
+
 const reassignOrder = (order: AllOrder) => {
   dispatchDialogMode.value = 'reassign'
   dispatchTargetOrder.value = order
@@ -584,26 +626,44 @@ const reassignOrder = (order: AllOrder) => {
 }
 
 const confirmDispatchOrder = async () => {
-  if (!dispatchTargetOrder.value || !dispatchDesignerId.value) return
+  if (!dispatchDesignerId.value) return
 
   try {
     if (dispatchDialogMode.value === 'reassign') {
+      if (!dispatchTargetOrder.value) return
+
       await assignOrderApi(Number(dispatchTargetOrder.value.id), {
         designerId: Number(dispatchDesignerId.value),
       })
       ElMessage.success('改派成功')
+      clearDetailSelection()
+    } else if (dispatchDialogMode.value === 'batchDispatch') {
+      await dispatchAdminOrdersBatchApi({
+        ids: selectedDetailRows.value.map(order => order.id),
+        designerId: dispatchDesignerId.value,
+      })
+      ElMessage.success('批量派单成功')
+      clearDetailSelection()
     } else {
+      if (!dispatchTargetOrder.value) return
+
       await dispatchAdminOrderApi({
         id: dispatchTargetOrder.value.id,
         designerId: dispatchDesignerId.value,
       })
       ElMessage.success('派单成功')
+      clearDetailSelection()
     }
 
     dispatchDialogVisible.value = false
     await loadCurrentTable()
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, dispatchDialogMode.value === 'reassign' ? '改派失败' : '派单失败'))
+    const fallback = dispatchDialogMode.value === 'reassign'
+      ? '改派失败'
+      : dispatchDialogMode.value === 'batchDispatch'
+        ? '批量派单失败'
+        : '派单失败'
+    ElMessage.error(getErrorMessage(error, fallback))
   }
 }
 
@@ -611,9 +671,29 @@ const approveOrder = async (order: AllOrder) => {
   try {
     await approveAdminOrderApi(order.id)
     ElMessage.success('审核通过成功')
+    clearDetailSelection()
     await loadCurrentTable()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '审核通过失败'))
+  }
+}
+
+const approveSelectedOrders = async () => {
+  if (!canBatchApproveSelected.value) return
+
+  isBatchApproving.value = true
+
+  try {
+    await approveAdminOrdersBatchApi({
+      ids: selectedDetailRows.value.map(order => order.id),
+    })
+    ElMessage.success('批量审核成功')
+    clearDetailSelection()
+    await loadCurrentTable()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '批量审核失败'))
+  } finally {
+    isBatchApproving.value = false
   }
 }
 
@@ -621,6 +701,7 @@ const rejectOrder = async (order: AllOrder) => {
   try {
     await rejectAdminOrderApi(order.id)
     ElMessage.success('退回成功')
+    clearDetailSelection()
     await loadCurrentTable()
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '退回失败'))
@@ -750,27 +831,12 @@ onMounted(() => {
 }
 
 .orders-filter {
-  display: grid;
-  grid-template-columns:
-    minmax(112px, 1fr)
-    minmax(112px, 1fr)
-    minmax(112px, 1fr)
-    minmax(112px, 1fr)
-    minmax(220px, 1.9fr)
-    minmax(128px, 1.15fr)
-    64px
-    100px
-    132px
-    96px
-    96px;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: center;
-  align-content: center;
-  min-height: 64px;
+  min-height: 78px;
   padding: 12px 22px;
   margin: 0;
-  overflow-x: hidden;
-  overflow-y: hidden;
 
   :deep(.el-form-item) {
     margin: 0;
@@ -797,6 +863,35 @@ onMounted(() => {
   }
 }
 
+.orders-filter-row {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.orders-filter-row--fields {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: center;
+}
+
+.orders-filter-row--actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.orders-filter-row--fields :deep(.el-form-item),
+.orders-filter-row--fields :deep(.el-form-item) {
+  width: 100%;
+}
+
+.orders-filter-row--actions :deep(.el-form-item) {
+  width: auto;
+}
+
 .date-form-item {
   :deep(.el-date-editor) {
     width: 100%;
@@ -807,7 +902,8 @@ onMounted(() => {
 .query-button,
 .import-button,
 .export-button,
-.summary-button {
+.summary-button,
+.batch-action-button {
   height: 34px;
   padding: 0;
   font-weight: 800;
@@ -838,6 +934,10 @@ onMounted(() => {
     background: #f5f7fa;
     border-color: #dcdfe6;
   }
+}
+
+.batch-action-button {
+  width: 96px;
 }
 
 .summary-button {
@@ -1013,45 +1113,14 @@ onMounted(() => {
     grid-template-rows: 56px minmax(64px, auto) minmax(0, 1fr) 72px;
   }
 
-  .orders-filter {
-    grid-template-columns:
-      minmax(112px, 1fr)
-      minmax(112px, 1fr)
-      minmax(112px, 1fr)
-      minmax(112px, 1fr)
-      minmax(220px, 1.9fr)
-      minmax(128px, 1.15fr)
-      64px
-      100px
-      132px
-      96px
-      96px;
-    padding: 12px 22px;
-  }
-
-  .date-form-item {
-    grid-column: auto;
+  .orders-filter-row--fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 900px) {
-  .orders-filter {
-    grid-template-columns:
-      minmax(112px, 1fr)
-      minmax(112px, 1fr)
-      minmax(112px, 1fr)
-      minmax(112px, 1fr)
-      minmax(220px, 1.9fr)
-      minmax(128px, 1.15fr)
-      64px
-      100px
-      132px
-      96px
-      96px;
-  }
-
-  .date-form-item {
-    grid-column: auto;
+  .orders-filter-row--fields {
+    grid-template-columns: 1fr;
   }
 }
 </style>

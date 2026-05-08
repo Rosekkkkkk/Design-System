@@ -43,10 +43,30 @@
       <el-form-item>
         <el-button class="query-button" type="primary" :loading="isLoading" @click="searchOrders">查询</el-button>
       </el-form-item>
+
+      <el-form-item>
+        <el-button class="batch-complete-button" type="success" plain :disabled="!canBatchCompleteSelected || isLoading" :loading="isBatchCompleting" @click="completeSelectedOrders">
+          批量完工
+        </el-button>
+      </el-form-item>
     </el-form>
 
     <div class="table-panel">
-      <el-table v-loading="isLoading" :data="orders" :cell-style="{ textAlign: 'center' }" :header-cell-style="{ textAlign: 'center' }" border height="100%" stripe>
+      <el-table
+        :key="tableRenderKey"
+        ref="tableRef"
+        v-loading="isLoading"
+        :data="orders"
+        :row-key="getDesignerOrderSelectionKey"
+        :cell-style="{ textAlign: 'center' }"
+        :header-cell-style="{ textAlign: 'center' }"
+        border
+        height="100%"
+        reserve-selection
+        stripe
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" reserve-selection width="52" fixed="left" />
         <el-table-column min-width="210" prop="merchant">
           <template #header>
             <button class="table-header-link" type="button" @click="openMerchantDialog">商家名称</button>
@@ -95,6 +115,13 @@
       </el-table>
     </div>
 
+    <div v-if="selectedOrders.length" class="selection-summary-bar is-visible">
+      <span class="selection-summary-check" aria-hidden="true">✓</span>
+      <span class="selection-summary-count">已选 {{ selectedOrders.length }} 条</span>
+      <span class="selection-summary-metric">照片张数 <strong>{{ selectedPhotoCount }}</strong></span>
+      <el-button class="clear-selection-button" plain size="small" @click="clearSelection">清空选择</el-button>
+    </div>
+
     <footer class="pagination">
       <el-pagination
         v-model:current-page="pagination.pageNo"
@@ -137,10 +164,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { TableInstance } from 'element-plus'
 import { getOrderFilterOptionsApi } from '../api/adminOrders'
 import {
+  completeDesignerOrdersBatchApi,
   completeDesignerOrderApi,
   getDesignerOrderListApi,
   getDesignerOrderShopGroupsApi,
@@ -148,6 +177,7 @@ import {
   type DesignerOrderRecordVO,
 } from '../api/designerOrders'
 import type { DesignerOrder, DesignerOrderGroup, DesignerOrdersFilters, DesignerOrdersPagination } from '../types/DesignerOrders'
+import { mergePagedSelection } from '../utils/allOrdersSelection'
 
 interface FilterOptionItem {
   id?: number | string
@@ -216,14 +246,20 @@ const merchantDialogVisible = ref(false)
 const activeMerchantGroups = ref<string[]>([])
 const merchantOrderGroups = ref<DesignerOrderGroup[]>([])
 const orders = ref<DesignerOrder[]>([])
+const selectedOrders = ref<DesignerOrder[]>([])
 const currentTotal = ref(0)
 const isLoading = ref(false)
 const isGroupLoading = ref(false)
 const completingOrderId = ref<DesignerOrder['id'] | null>(null)
+const isBatchCompleting = ref(false)
+const tableRenderKey = ref(0)
+const tableRef = ref<TableInstance>()
 
 const merchantOptions = ref<string[]>([])
 const photoTypeOptions = ref<string[]>([])
 const statusOptions = ref<string[]>([])
+const selectedPhotoCount = computed(() => selectedOrders.value.reduce((sum, item) => sum + item.photoCount, 0))
+const canBatchCompleteSelected = computed(() => selectedOrders.value.length > 0)
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   return error instanceof Error && error.message ? error.message : fallback
@@ -268,6 +304,8 @@ const normalizeGroup = (group: DesignerOrderGroupVO): DesignerOrderGroup => ({
   orders: (group.orders ?? []).map(normalizeOrder),
 })
 
+const getDesignerOrderSelectionKey = (order: Pick<DesignerOrder, 'id' | 'orderNo'>) => order.id || order.orderNo
+
 const buildQuery = () => ({
   pageNo: pagination.pageNo,
   pageSize: pagination.pageSize,
@@ -310,12 +348,23 @@ const loadOrders = async () => {
 
 const searchOrders = () => {
   pagination.pageNo = 1
+  clearSelection()
   void loadOrders()
 }
 
 const handlePageSizeChange = () => {
   pagination.pageNo = 1
   void loadOrders()
+}
+
+const handleSelectionChange = (selection: DesignerOrder[]) => {
+  selectedOrders.value = mergePagedSelection(selectedOrders.value, selection, orders.value, getDesignerOrderSelectionKey)
+}
+
+const clearSelection = () => {
+  tableRef.value?.clearSelection()
+  selectedOrders.value = []
+  tableRenderKey.value += 1
 }
 
 const canCompleteOrder = (order: DesignerOrder) => {
@@ -338,6 +387,7 @@ const completeOrder = async (order: DesignerOrder) => {
   try {
     await completeDesignerOrderApi({ id: order.id })
     ElMessage.success('订单已提交完工')
+    clearSelection()
     await loadOrders()
 
     if (merchantDialogVisible.value) {
@@ -347,6 +397,39 @@ const completeOrder = async (order: DesignerOrder) => {
     ElMessage.error(getErrorMessage(error, '提交完工失败'))
   } finally {
     completingOrderId.value = null
+  }
+}
+
+const completeSelectedOrders = async () => {
+  if (!canBatchCompleteSelected.value) return
+
+  try {
+    await ElMessageBox.confirm(`确定将选中的 ${selectedOrders.value.length} 条订单提交完工吗？`, '批量完工确认', {
+      confirmButtonText: '确认完工',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
+  isBatchCompleting.value = true
+
+  try {
+    await completeDesignerOrdersBatchApi({
+      ids: selectedOrders.value.map(order => order.id),
+    })
+    ElMessage.success('批量完工成功')
+    clearSelection()
+    await loadOrders()
+
+    if (merchantDialogVisible.value) {
+      await loadMerchantGroups()
+    }
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '批量完工失败'))
+  } finally {
+    isBatchCompleting.value = false
   }
 }
 
@@ -378,7 +461,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .designer-orders-card {
   display: grid;
-  grid-template-rows: 70px 64px minmax(0, 1fr) 72px;
+  grid-template-rows: 70px minmax(64px, auto) minmax(0, 1fr) auto 72px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -405,7 +488,7 @@ onMounted(() => {
 
 .orders-filter {
   display: grid;
-  grid-template-columns: 177px 177px 177px 400px 221px 62px;
+  grid-template-columns: 177px 177px 177px 400px 221px 62px 108px;
   gap: 10px;
   align-items: center;
   min-height: 0;
@@ -452,6 +535,13 @@ onMounted(() => {
   border-radius: 8px;
 }
 
+.batch-complete-button {
+  width: 108px;
+  height: 33px;
+  font-weight: 800;
+  border-radius: 8px;
+}
+
 .table-panel {
   min-height: 0;
   padding: 0 22px;
@@ -480,6 +570,78 @@ onMounted(() => {
 
   :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
     background: #f8fbff;
+  }
+
+  :deep(.el-checkbox__inner) {
+    width: 14px;
+    height: 14px;
+    border-color: #cbd8e8;
+    border-radius: 0;
+  }
+}
+
+.selection-summary-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 26px;
+  height: 40px;
+  margin: 10px 22px 0;
+  padding: 0 18px;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #078f86 0%, #007f7a 52%, #00746f 100%);
+  box-shadow: 0 12px 26px rgba(0, 114, 108, 0.18);
+}
+
+.selection-summary-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  color: #008b83;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  background: #dff8f4;
+  border-radius: 50%;
+}
+
+.selection-summary-count,
+.selection-summary-metric {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.selection-summary-metric strong {
+  margin-left: 6px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.clear-selection-button {
+  width: 78px;
+  height: 28px;
+  padding: 0;
+  margin-left: auto;
+  color: #e9fffb;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.58);
+  border-radius: 4px;
+
+  &:hover,
+  &:focus {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.82);
   }
 }
 
@@ -627,11 +789,11 @@ onMounted(() => {
 
 @media (max-width: 1500px) {
   .designer-orders-card {
-    grid-template-rows: 70px auto minmax(0, 1fr) 72px;
+    grid-template-rows: 70px auto minmax(0, 1fr) auto 72px;
   }
 
   .orders-filter {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     padding: 14px 22px;
   }
 
